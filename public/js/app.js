@@ -28,27 +28,25 @@ const ApiService = {
   },
 
   // --- NHÂN KHẨU (Thêm mới/Sửa thành viên) ---
-  // Lưu ý: Bạn cần bổ sung API POST /api/residents ở server.js để hàm này hoạt động hoàn hảo
   saveResident: async (data) => {
     try {
-      // Tạm thời gọi endpoint chung hoặc giả lập nếu server chưa có
-      const res = await fetch('/api/residents', { 
+      const res = await fetch('/api/residents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
       return await res.json();
-    } catch (e) { 
-        console.warn("API lưu nhân khẩu chưa có, log dữ liệu:", data);
-        return { success: true }; // Giả lập thành công để UI không bị treo
+    } catch (e) {
+      console.warn("API lưu nhân khẩu chưa có, log dữ liệu:", data);
+      return { success: true };
     }
   },
 
   deleteResident: async (id) => {
-      try {
-        const res = await fetch(`/api/residents/${id}`, { method: 'DELETE' });
-        return await res.json();
-      } catch (e) { return { success: false }; }
+    try {
+      const res = await fetch(`/api/residents/${id}`, { method: 'DELETE' });
+      return await res.json();
+    } catch (e) { return { success: false }; }
   },
 
   // --- TẠM TRÚ / TẠM VẮNG ---
@@ -58,23 +56,23 @@ const ApiService = {
       return await res.json();
     } catch (e) { return []; }
   },
-  
+
   saveTempResident: async (data) => {
-      try {
-        const res = await fetch('/api/temp-residents', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
-        return await res.json();
-      } catch(e) { return {success: false}; }
+    try {
+      const res = await fetch('/api/temp-residents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch (e) { return { success: false }; }
   },
-  
+
   deleteTempResident: async (id) => {
-      try {
-          const res = await fetch(`/api/temp-residents/${id}`, {method: 'DELETE'});
-          return await res.json();
-      } catch(e) { return {success: false}; }
+    try {
+      const res = await fetch(`/api/temp-residents/${id}`, { method: 'DELETE' });
+      return await res.json();
+    } catch (e) { return { success: false }; }
   },
 
   getAbsentResidents: async () => {
@@ -85,21 +83,21 @@ const ApiService = {
   },
 
   saveAbsentResident: async (data) => {
-      try {
-        const res = await fetch('/api/absent-residents', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
-        return await res.json();
-      } catch(e) { return {success: false}; }
+    try {
+      const res = await fetch('/api/absent-residents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch (e) { return { success: false }; }
   },
-  
+
   deleteAbsentResident: async (id) => {
-      try {
-          const res = await fetch(`/api/absent-residents/${id}`, {method: 'DELETE'});
-          return await res.json();
-      } catch(e) { return {success: false}; }
+    try {
+      const res = await fetch(`/api/absent-residents/${id}`, { method: 'DELETE' });
+      return await res.json();
+    } catch (e) { return { success: false }; }
   }
 };
 
@@ -111,7 +109,7 @@ let absentResidents = [];
 let rewards = [];
 let currentSection = 'households';
 let isDetailDirty = false;
-let currentDraggedItem = null; // Biến cho kéo thả tách hộ
+let currentDraggedItem = null;
 
 // ===== DOM ELEMENTS =====
 const loginPage = document.getElementById("loginPage");
@@ -140,18 +138,16 @@ const confirmModalCancel = document.getElementById("confirmModalCancel");
 // ===== KHỞI TẠO DỮ LIỆU =====
 async function loadData() {
   try {
-    // Load song song dữ liệu từ SQL Server
     const [hkData, ttData, tvData] = await Promise.all([
       ApiService.getHouseholds(),
       ApiService.getTempResidents(),
       ApiService.getAbsentResidents()
     ]);
 
-    households = hkData;
-    tempResidents = ttData;
-    absentResidents = tvData;
-    // Dữ liệu mẫu phần thưởng (vì chưa có API)
-    rewards = [{id:"R001",loai:"Trung thu 2025",giaTri:"300.000đ",chiTiet:[]}];
+    households = hkData || [];
+    tempResidents = ttData || [];
+    absentResidents = tvData || [];
+    rewards = [{ id: "R001", loai: "Trung thu 2025", giaTri: "300.000đ", chiTiet: [] }];
 
     flattenResidents();
     navigateTo(currentSection);
@@ -161,9 +157,10 @@ async function loadData() {
   }
 }
 
-// Chuyển đổi dữ liệu hộ khẩu lồng nhau sang danh sách nhân khẩu phẳng
 function flattenResidents() {
   residents = [];
+  if (!households || !Array.isArray(households)) return;
+
   households.forEach(hk => {
     if (hk.nhanKhau && Array.isArray(hk.nhanKhau)) {
       hk.nhanKhau.forEach(nk => {
@@ -179,7 +176,7 @@ function flattenResidents() {
 }
 
 // ===== XÁC THỰC =====
-passwordInput.addEventListener("keypress", function(event) {
+passwordInput.addEventListener("keypress", function (event) {
   if (event.key === "Enter") {
     event.preventDefault();
     loginBtn.click();
@@ -206,7 +203,7 @@ loginBtn.onclick = async () => {
       errorMsg.textContent = data.message || "Đăng nhập thất bại";
     }
   } catch (e) {
-    errorMsg.textContent = "Lỗi kết nối server (Kiểm tra xem node server.js đã chạy chưa?)";
+    errorMsg.textContent = "Lỗi kết nối server";
   }
 };
 logoutBtn.onclick = () => location.reload();
@@ -226,7 +223,7 @@ document.querySelectorAll(".nav-item").forEach(it => {
       document.getElementById("residenceSub").classList.toggle("show");
       return;
     }
-    
+
     resetMenu();
     it.classList.add("active");
 
@@ -234,15 +231,15 @@ document.querySelectorAll(".nav-item").forEach(it => {
       document.getElementById("residenceSub").classList.add("show");
       document.getElementById("residenceMain").classList.add("active");
     }
-    
+
     if (sectionId) navigateTo(sectionId);
   };
 });
 
 function resetMenu() {
-    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-    document.getElementById("residenceSub").classList.remove("show");
-    document.getElementById("residenceMain").classList.remove("active");
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  document.getElementById("residenceSub").classList.remove("show");
+  document.getElementById("residenceMain").classList.remove("active");
 }
 
 function navigateTo(sectionId) {
@@ -266,7 +263,7 @@ function forceNavigateTo(sectionId) {
     case 'residents': renderResidents(); break;
     case 'residence_temp': renderTemp(); break;
     case 'residence_absent': renderAbsent(); break;
-    case 'stats': updateStats('gender'); break; 
+    case 'stats': updateStats('gender'); break;
     case 'rewards': renderRewards(); break;
   }
 }
@@ -287,10 +284,10 @@ function updateHeader(sectionId) {
     title = "Quản lý tạm vắng";
     actionsHtml = `<input type="text" id="searchAbsent" class="search-bar" placeholder="Tìm kiếm..."><button class="btn primary" id="addAbsentBtn">Thêm tạm vắng</button>`;
   } else if (sectionId === 'rewards') {
-      title = "Quản lý phần thưởng";
-      actionsHtml = `<button class="btn primary" id="addRewardBtn">Thêm phần thưởng</button>`;
+    title = "Quản lý phần thưởng";
+    actionsHtml = `<button class="btn primary" id="addRewardBtn">Thêm phần thưởng</button>`;
   } else if (sectionId === 'stats') {
-      title = "Thống kê dân cư";
+    title = "Thống kê dân cư";
   }
 
   headerTitle.textContent = title;
@@ -300,33 +297,35 @@ function updateHeader(sectionId) {
 }
 
 function attachHeaderEvents(sectionId) {
-    if (sectionId === 'households') {
-        document.getElementById("addHouseholdBtn").onclick = () => showHouseholdForm();
-        document.getElementById("searchHousehold").oninput = (e) => {
-            const k = e.target.value.toLowerCase();
-            renderHouseholds(households.filter(h => h.chuHo.toLowerCase().includes(k) || h.id.toLowerCase().includes(k)));
-        };
-    }
-    if (sectionId === 'residents') {
-        document.getElementById("searchResident").oninput = (e) => {
-            const k = e.target.value.toLowerCase();
-            renderResidents(residents.filter(r => r.ten.toLowerCase().includes(k) || r.cccd.includes(k)));
-        };
-    }
-    if (sectionId === 'residence_temp') {
-        document.getElementById("addTempBtn").onclick = () => showTempForm();
-        document.getElementById("searchTemp").oninput = (e) => {
-            const k = e.target.value.toLowerCase();
-            renderTemp(tempResidents.filter(t => t.ten.toLowerCase().includes(k)));
-        };
-    }
-    if (sectionId === 'residence_absent') {
-        document.getElementById("addAbsentBtn").onclick = () => showAbsentForm();
-        document.getElementById("searchAbsent").oninput = (e) => {
-            const k = e.target.value.toLowerCase();
-            renderAbsent(absentResidents.filter(t => t.ten.toLowerCase().includes(k)));
-        };
-    }
+  if (sectionId === 'households') {
+    document.getElementById("addHouseholdBtn").onclick = () => showHouseholdForm();
+    document.getElementById("searchHousehold").oninput = (e) => {
+      const k = e.target.value.toLowerCase();
+      renderHouseholds(households.filter(h => h.chuHo.toLowerCase().includes(k) || h.id.toLowerCase().includes(k)));
+    };
+  }
+  if (sectionId === 'residents') {
+    document.getElementById("searchResident").oninput = (e) => {
+      const k = e.target.value.toLowerCase();
+      const filteredPermanent = residents.filter(r => r.ten.toLowerCase().includes(k) || r.cccd.includes(k));
+      const filteredTemp = tempResidents.filter(t => t.ten.toLowerCase().includes(k) || t.cccd.includes(k));
+      renderResidents(filteredPermanent, filteredTemp);
+    };
+  }
+  if (sectionId === 'residence_temp') {
+    document.getElementById("addTempBtn").onclick = () => showTempForm();
+    document.getElementById("searchTemp").oninput = (e) => {
+      const k = e.target.value.toLowerCase();
+      renderTemp(tempResidents.filter(t => t.ten.toLowerCase().includes(k)));
+    };
+  }
+  if (sectionId === 'residence_absent') {
+    document.getElementById("addAbsentBtn").onclick = () => showAbsentForm();
+    document.getElementById("searchAbsent").oninput = (e) => {
+      const k = e.target.value.toLowerCase();
+      renderAbsent(absentResidents.filter(t => t.ten.toLowerCase().includes(k)));
+    };
+  }
 }
 
 
@@ -334,6 +333,10 @@ function attachHeaderEvents(sectionId) {
 function renderHouseholds(list = households) {
   const tb = document.querySelector("#householdTable tbody");
   tb.innerHTML = "";
+  if (!list || list.length === 0) {
+    tb.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Không có dữ liệu</td></tr>";
+    return;
+  }
   list.forEach((h, index) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -351,7 +354,6 @@ function renderHouseholds(list = households) {
   });
 }
 
-// SỔ HỘ KHẨU CHI TIẾT (Rich View)
 function showHouseholdBookDetail(id) {
   const h = households.find(x => x.id === id);
   if (!h) return;
@@ -408,7 +410,7 @@ function showHouseholdForm(id = null) {
   const isEdit = id !== null;
   const h = isEdit ? households.find(x => x.id === id) : { diaChi: {} };
   const title = isEdit ? "Chỉnh sửa hộ khẩu" : "Thêm hộ khẩu mới";
-  
+
   const contentHtml = `
     <div class="form-group"><label>Tên chủ hộ:</label><input type="text" id="formChuHo" value="${h.chuHo || ''}"></div>
     <div class="form-grid-2">
@@ -431,8 +433,7 @@ function showHouseholdForm(id = null) {
 
 async function saveHousehold(id) {
   const data = {
-    // Nếu id là 'null' (chuỗi) thì coi như thêm mới
-    id: id !== 'null' ? id : null, 
+    id: id !== 'null' ? id : null,
     chuHo: document.getElementById("formChuHo").value,
     ngayLapSo: document.getElementById("formNgayLapSo").value,
     diaChi: {
@@ -474,23 +475,21 @@ function showSplitHouseholdForm(hkId) {
   if (!hk) return;
   if (!hk.nhanKhau || hk.nhanKhau.length < 2) return alert("Hộ phải có ít nhất 2 người để tách.");
 
-  // Logic tách hộ ở Frontend (chọn người chuyển)
-  let membersHk1 = [...hk.nhanKhau]; // Mảng copy
-  let membersHk2 = []; // Hộ mới
+  let membersHk1 = [...hk.nhanKhau];
+  let membersHk2 = [];
 
   const updateUI = () => {
-      document.getElementById('hk1_members').innerHTML = membersHk1.map(m => `<div class="member-item" onclick="moveMemberToNew('${m.id}')">${m.ten} (${m.vaiTro}) -></div>`).join('');
-      document.getElementById('hk2_members').innerHTML = membersHk2.map(m => `<div class="member-item" onclick="moveMemberToOld('${m.id}')"><- ${m.ten} (${m.vaiTro})</div>`).join('');
+    document.getElementById('hk1_members').innerHTML = membersHk1.map(m => `<div class="member-item" onclick="moveMemberToNew('${m.id}')">${m.ten} (${m.vaiTro}) -></div>`).join('');
+    document.getElementById('hk2_members').innerHTML = membersHk2.map(m => `<div class="member-item" onclick="moveMemberToOld('${m.id}')"><- ${m.ten} (${m.vaiTro})</div>`).join('');
   };
-  
-  // Gắn function vào window để HTML gọi được
+
   window.moveMemberToNew = (id) => {
-      const idx = membersHk1.findIndex(m => m.id === id);
-      if(idx > -1) { membersHk2.push(membersHk1[idx]); membersHk1.splice(idx, 1); updateUI(); }
+    const idx = membersHk1.findIndex(m => m.id === id);
+    if (idx > -1) { membersHk2.push(membersHk1[idx]); membersHk1.splice(idx, 1); updateUI(); }
   };
   window.moveMemberToOld = (id) => {
-      const idx = membersHk2.findIndex(m => m.id === id);
-      if(idx > -1) { membersHk1.push(membersHk2[idx]); membersHk2.splice(idx, 1); updateUI(); }
+    const idx = membersHk2.findIndex(m => m.id === id);
+    if (idx > -1) { membersHk1.push(membersHk2[idx]); membersHk2.splice(idx, 1); updateUI(); }
   };
 
   const contentHtml = `
@@ -515,112 +514,133 @@ function showSplitHouseholdForm(hkId) {
 }
 
 async function saveSplitHousehold(oldId) {
-    const newOwner = document.getElementById("hk2_chuho").value;
-    // Lấy danh sách thành viên hộ mới từ DOM hoặc biến toàn cục (cần xử lý khéo léo)
-    // Để đơn giản, ở đây ta chỉ tạo Hộ mới với Chủ hộ mới. 
-    // Việc chuyển thành viên chi tiết cần API phức tạp hơn.
-    if(!newOwner) return alert("Nhập tên chủ hộ mới!");
-    
-    // Gọi API tạo hộ mới
-    const data = {
-        chuHo: newOwner,
-        ngayLapSo: new Date().toISOString().split('T')[0],
-        diaChi: households.find(h => h.id === oldId).diaChi // Kế thừa địa chỉ cũ
-    };
-    
-    const res = await ApiService.saveHousehold(data);
-    if(res.success) {
-        alert("Đã tách hộ mới thành công!");
-        loadData();
-        hideDetailView();
-    } else {
-        alert("Lỗi tách hộ!");
-    }
+  const newOwner = document.getElementById("hk2_chuho").value;
+  if (!newOwner) return alert("Nhập tên chủ hộ mới!");
+
+  const data = {
+    chuHo: newOwner,
+    ngayLapSo: new Date().toISOString().split('T')[0],
+    diaChi: households.find(h => h.id === oldId).diaChi
+  };
+
+  const res = await ApiService.saveHousehold(data);
+  if (res.success) {
+    alert("Đã tách hộ mới thành công!");
+    loadData();
+    hideDetailView();
+  } else {
+    alert("Lỗi tách hộ!");
+  }
 }
 
 
 // ===== 2. LOGIC NHÂN KHẨU =====
-function renderResidents(list = residents) {
+function renderResidents(list = residents, tList = tempResidents) {
   const tb = document.querySelector("#residentTable tbody");
   tb.innerHTML = "";
 
-  list.forEach(r => {
+  const sourcePermanent = (list && list.length > 0) ? list : (list === null ? [] : residents);
+  const safePermanent = Array.isArray(sourcePermanent) ? sourcePermanent : residents;
+
+  const permanentList = safePermanent.map(r => {
+    let note = [];
+    if (r.vaiTro === 'Chủ hộ') note.push("Chủ hộ");
+    if (r.ghiChu && r.ghiChu.toLowerCase().includes('qua đời')) note.push("Đã qua đời");
+    const isAbsent = absentResidents.find(ab => ab.nhanKhauId === r.id);
+    if (isAbsent) note.push(`Tạm vắng`);
+
+    return {
+      ...r,
+      finalNote: note.join(", ")
+    };
+  });
+
+  const safeTemp = Array.isArray(tList) ? tList : tempResidents;
+  const temporaryList = safeTemp.map(t => ({
+    ...t,
+    stt: 0,
+    finalNote: "Tạm trú"
+  }));
+
+  const allPeople = [...permanentList, ...temporaryList];
+
+  if (allPeople.length === 0) {
+    tb.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Không có dữ liệu</td></tr>";
+    return;
+  }
+
+  allPeople.forEach((p, index) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${r.stt}</td><td>${r.ten}</td><td>${formatDate(r.ngaySinh)}</td><td>${r.gioiTinh}</td><td>${r.ghiChu || ''}</td><td><button class='btn small primary' onclick='showResidentDetail("${r.id}")'>Chi tiết</button></td>`;
+    tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td>${p.ten}</td>
+        <td>${formatDate(p.ngaySinh)}</td>
+        <td>${p.gioiTinh}</td>
+        <td>${p.finalNote || ''}</td>
+        <td><button class='btn small primary' onclick='showResidentDetail("${p.id}")'>Chi tiết</button></td>
+    `;
     tb.appendChild(tr);
   });
 }
 
-// function renderResidents(list = residents, tlist = tempResidents) {
-//   const tb = document.querySelector("#residentTable tbody");
-//   tb.innerHTML = "";
-//   const permanentList = list.map(r => {
-//       let note = [];
-//       if(r.vaiTro === 'Chủ hộ') note.push("Chủ hộ");
-//       if(r.ghiChu && r.ghiChu.toLowerCase().includes('qua đời')) note.push("Đã qua đời");
-//       // Check Tạm vắng
-//       const isAbsent = absentResidents.find(ab => ab.nhanKhauId === r.id);
-//       if(isAbsent) note.push(`Tạm vắng`);
-
-//       return {
-//           ...r,
-//           finalNote: note.join(", ")
-//       };
-//   });
-//   const temporaryList = tlist.map(t => ({
-//       ...t,
-//       stt: 0,
-//       finalNote: "Tạm trú"
-//   }));
-
-//   // 3. Gộp và hiển thị
-//   const allPeople = [...permanentList, ...temporaryList];
-//   allPeople.forEach((p, index) => {
-//     const tr = document.createElement("tr");
-//     tr.innerHTML = `
-//         <td>${index + 1}</td>
-//         <td>${p.ten}</td>
-//         <td>${formatDate(p.ngaySinh)}</td>
-//         <td>${p.gioiTinh}</td>
-//         <td>${p.finalNote || ''}</td>
-//         <td><button class='btn small primary' onclick='showResidentDetail("${p.id}")'>Chi tiết</button></td>
-//     `;
-//     tb.appendChild(tr);
-//   });
-  
-// }
-
-
-
-
+// CẬP NHẬT: Trang chi tiết nhân khẩu đầy đủ thông tin
 function showResidentDetail(id) {
-    const r = residents.find(x => x.id === id);
-    if(!r) return;
-    const contentHtml = `
+  let r = residents.find(x => x.id === id);
+  let isTemp = false;
+  if (!r) {
+    r = tempResidents.find(x => x.id === id);
+    isTemp = true;
+  }
+
+  if (!r) return;
+  const contentHtml = `
     <h3 class="detail-name-title">${r.ten}</h3>
     <div class="info-vertical-list">
+        <!-- Hàng 1 -->
+        <div class="info-item-row"><label>Họ và tên</label><span>${r.ten}</span></div>
         <div class="info-item-row"><label>Ngày sinh</label><span>${formatDate(r.ngaySinh)}</span></div>
-        <div class="info-item-row"><label>CCCD</label><span>${r.cccd || 'N/A'}</span></div>
+        
+        <!-- Hàng 2 -->
         <div class="info-item-row"><label>Giới tính</label><span>${r.gioiTinh}</span></div>
-        <div class="info-item-row"><label>Nghề nghiệp</label><span>${r.nghe}</span></div>
-        <div class="info-item-row"><label>Dân tộc</label><span>${r.danToc}</span></div>
-        <div class="info-item-row full-width"><label>Quê quán</label><span>${r.queQuan}</span></div>
-        <div class="info-item-row full-width"><label>Thường trú</label><span>${r.diaChiThuongTru}</span></div>
+        <div class="info-item-row"><label>Số điện thoại</label><span>${r.sdt || 'N/A'}</span></div>
+        
+        <!-- Hàng 3 -->
+        <div class="info-item-row"><label>Số CCCD</label><span>${r.cccd || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(r.cccdNgayCap) || 'N/A'}</span></div>
+        
+        <!-- Hàng 4 -->
+        <div class="info-item-row"><label>Nơi cấp CCCD</label><span>${r.cccdNoiCap || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nghề nghiệp</label><span>${r.nghe || 'N/A'}</span></div>
+        
+        <!-- Hàng 5 -->
+        <div class="info-item-row"><label>Dân tộc</label><span>${r.danToc || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Tôn giáo</label><span>${r.tonGiao || 'N/A'}</span></div>
+        
+        <!-- Hàng 6 -->
+        <div class="info-item-row"><label>Quốc tịch</label><span>${r.quocTich || 'Việt Nam'}</span></div>
+        <div class="info-item-row"><label>Quê quán</label><span>${r.queQuan || 'N/A'}</span></div>
+        
+        <!-- Hàng 7 -->
+        <div class="info-item-row full-width"><label>Thường trú</label><span>${r.diaChiThuongTru || 'N/A'}</span></div>
+        
+        <!-- Hàng 8 -->
+        <div class="info-item-row full-width"><label>Nơi ở hiện tại</label><span>${r.noiOHienTai || 'N/A'}</span></div>
+        
+        ${isTemp ? `<div class="info-item-row full-width"><label>Tạm trú tại</label><span>${r.noiTamTru}</span></div>` : ''}
     </div>
     <div class="form-actions">
-        <button class="btn success" onclick='showResidentForm("${r.hoKhauId}", "${r.id}")'>Chỉnh sửa</button>
+        ${!isTemp ? `<button class="btn success" onclick='showResidentForm("${r.hoKhauId}", "${r.id}")'>Chỉnh sửa</button>` : ''}
     </div>
     `;
-    showDetailView("Chi tiết nhân khẩu", contentHtml);
+  showDetailView("Chi tiết nhân khẩu", contentHtml);
 }
 
 function showResidentForm(hkId, nkId = null) {
-    const isEdit = nkId !== null;
-    // Tìm nhân khẩu trong list phẳng hoặc trong hộ
-    let r = {};
-    if(isEdit) r = residents.find(x => x.id === nkId) || {};
-    
-    const contentHtml = `
+  const isEdit = nkId !== null;
+  let r = {};
+  if (isEdit) r = residents.find(x => x.id === nkId) || {};
+
+  const contentHtml = `
     <div class="form-grid-2">
       <div class="form-group"><label>Họ tên:</label><input id="nk_ten" value="${r.ten || ''}"></div>
       <div class="form-group"><label>Ngày sinh:</label><input type="date" id="nk_ns" value="${r.ngaySinh || ''}"></div>
@@ -634,38 +654,38 @@ function showResidentForm(hkId, nkId = null) {
     
     <div class="form-actions"><button class="btn success" onclick="saveResident('${hkId}', '${nkId}')">Lưu</button><button class="btn" onclick="cancelForm()">Hủy</button></div>
     `;
-    showDetailView(isEdit ? "Sửa nhân khẩu" : "Thêm nhân khẩu", contentHtml, true);
-    if(r.gioiTinh) document.getElementById('nk_gt').value = r.gioiTinh;
+  showDetailView(isEdit ? "Sửa nhân khẩu" : "Thêm nhân khẩu", contentHtml, true);
+  if (r.gioiTinh) document.getElementById('nk_gt').value = r.gioiTinh;
 }
 
 async function saveResident(hkId, nkId) {
-    const data = {
-        id: nkId === 'null' ? null : nkId,
-        hoKhauId: hkId,
-        ten: document.getElementById('nk_ten').value,
-        ngaySinh: document.getElementById('nk_ns').value,
-        cccd: document.getElementById('nk_cccd').value,
-        vaiTro: document.getElementById('nk_qh').value,
-        gioiTinh: document.getElementById('nk_gt').value,
-        nghe: document.getElementById('nk_nghe').value,
-        queQuan: document.getElementById('nk_que').value,
-        diaChiThuongTru: document.getElementById('nk_tt').value
-    };
-    
-    const res = await ApiService.saveResident(data);
-    if(res.success) {
-        alert("Lưu nhân khẩu thành công!");
-        loadData();
-        hideDetailView();
-    } else {
-        alert("Lỗi khi lưu nhân khẩu!");
-    }
+  const data = {
+    id: nkId === 'null' ? null : nkId,
+    hoKhauId: hkId,
+    ten: document.getElementById('nk_ten').value,
+    ngaySinh: document.getElementById('nk_ns').value,
+    cccd: document.getElementById('nk_cccd').value,
+    vaiTro: document.getElementById('nk_qh').value,
+    gioiTinh: document.getElementById('nk_gt').value,
+    nghe: document.getElementById('nk_nghe').value,
+    queQuan: document.getElementById('nk_que').value,
+    diaChiThuongTru: document.getElementById('nk_tt').value
+  };
+
+  const res = await ApiService.saveResident(data);
+  if (res.success) {
+    alert("Lưu nhân khẩu thành công!");
+    loadData();
+    hideDetailView();
+  } else {
+    alert("Lỗi khi lưu nhân khẩu!");
+  }
 }
 
 // CHUYỂN ĐI / KHAI TỬ
 function showMoveResidentForm(hkId, nkId) {
-    const r = residents.find(x => x.id === nkId);
-    const contentHtml = `
+  const r = residents.find(x => x.id === nkId);
+  const contentHtml = `
     <h3>Chuyển đi / Khai tử: ${r.ten}</h3>
     <div class="form-group">
         <label>Loại:</label>
@@ -678,23 +698,21 @@ function showMoveResidentForm(hkId, nkId) {
     <div class="form-group"><label>Ghi chú/Nơi đến:</label><input type="text" id="moveNote"></div>
     <div class="form-actions"><button class="btn danger" onclick="saveMoveResident('${nkId}')">Xác nhận</button></div>
     `;
-    showDetailView("Thay đổi trạng thái", contentHtml, true);
+  showDetailView("Thay đổi trạng thái", contentHtml, true);
 }
 
 async function saveMoveResident(nkId) {
-    // Logic này thường sẽ cập nhật trường 'ghiChu' của nhân khẩu
-    const note = document.getElementById('moveNote').value;
-    const type = document.getElementById('moveType').value;
-    const date = document.getElementById('moveDate').value;
-    
-    // Gọi API saveResident để update ghi chú
-    const r = residents.find(x => x.id === nkId);
-    if(r) {
-        const newData = { ...r, ghiChu: `${type === 'quaDoi' ? 'Mất' : 'Chuyển'} ngày ${date}. ${note}` };
-        await ApiService.saveResident(newData);
-        loadData();
-        hideDetailView();
-    }
+  const note = document.getElementById('moveNote').value;
+  const type = document.getElementById('moveType').value;
+  const date = document.getElementById('moveDate').value;
+
+  const r = residents.find(x => x.id === nkId);
+  if (r) {
+    const newData = { ...r, ghiChu: `${type === 'quaDoi' ? 'Mất' : 'Chuyển'} ngày ${date}. ${note}` };
+    await ApiService.saveResident(newData);
+    loadData();
+    hideDetailView();
+  }
 }
 
 
@@ -702,97 +720,302 @@ async function saveMoveResident(nkId) {
 function renderTemp() {
   const tb = document.querySelector("#tempTable tbody");
   tb.innerHTML = "";
+  if (!tempResidents || tempResidents.length === 0) {
+    tb.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Không có dữ liệu</td></tr>";
+    return;
+  }
   tempResidents.forEach((t, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${i + 1}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.cccd}</td><td>${t.queQuan}</td>
     <td>
-        <button class='btn small primary'>Chi tiết</button>
+        <button class='btn small primary' onclick="showTempDetail('${t.id}')">Chi tiết</button>
+        <button class='btn small success' onclick="showTempForm('${t.id}')">Sửa</button>
         <button class='btn small danger' onclick="deleteTemp('${t.id}')">Xóa</button>
     </td>`;
     tb.appendChild(tr);
   });
 }
 
-function showTempForm() {
+// Hàm xem chi tiết tạm trú (đầy đủ thông tin)
+function showTempDetail(id) {
+    const t = tempResidents.find(x => x.id === id);
+    if (!t) return;
     const contentHtml = `
-    <div class="form-grid-2">
-        <div class="form-group"><label>Họ tên:</label><input id="tmp_ten"></div>
-        <div class="form-group"><label>Ngày sinh:</label><input type="date" id="tmp_ns"></div>
-        <div class="form-group"><label>CCCD:</label><input id="tmp_cccd"></div>
-        <div class="form-group"><label>Quê quán:</label><input id="tmp_que"></div>
+    <h3 class="detail-name-title">${t.ten}</h3>
+    <div class="info-vertical-list">
+        <div class="info-item-row"><label>Họ và tên</label><span>${t.ten}</span></div>
+        <div class="info-item-row"><label>Ngày sinh</label><span>${formatDate(t.ngaySinh)}</span></div>
+        <div class="info-item-row"><label>Giới tính</label><span>${t.gioiTinh}</span></div>
+        <div class="info-item-row"><label>Số điện thoại</label><span>${t.sdt || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Số CCCD</label><span>${t.cccd || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(t.cccdNgayCap) || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nơi cấp CCCD</label><span>${t.cccdNoiCap || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nghề nghiệp</label><span>${t.nghe || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Dân tộc</label><span>${t.danToc || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Tôn giáo</label><span>${t.tonGiao || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Quốc tịch</label><span>${t.quocTich || 'Việt Nam'}</span></div>
+        <div class="info-item-row"><label>Quê quán</label><span>${t.queQuan || 'N/A'}</span></div>
+        <div class="info-item-row full-width"><label>Thường trú</label><span>${t.diaChiThuongTru || 'N/A'}</span></div>
+        <div class="info-item-row full-width" style="border-top: 2px solid #3498db; margin-top: 10px; padding-top: 10px;"><label><strong>Nơi tạm trú</strong></label><span><strong>${t.noiTamTru}</strong></span></div>
+        <div class="info-item-row"><label>Ngày đăng ký</label><span>${formatDate(t.ngayDangKy)}</span></div>
+        <div class="info-item-row"><label>Thời hạn</label><span>${t.thoiHanTamTru || 'N/A'}</span></div>
     </div>
-    <div class="form-group"><label>Nơi tạm trú:</label><input id="tmp_noio"></div>
-    <div class="form-actions"><button class="btn success" onclick="saveTemp()">Lưu</button></div>
+    <div class="form-actions"><button class="btn success" onclick="showTempForm('${t.id}')">Chỉnh sửa</button></div>
     `;
-    showDetailView("Đăng ký tạm trú", contentHtml, true);
+    showDetailView("Chi tiết tạm trú", contentHtml);
 }
 
-async function saveTemp() {
-    const data = {
-        ten: document.getElementById('tmp_ten').value,
-        ngaySinh: document.getElementById('tmp_ns').value,
-        cccd: document.getElementById('tmp_cccd').value,
-        queQuan: document.getElementById('tmp_que').value,
-        noiTamTru: document.getElementById('tmp_noio').value,
-        ngayDangKy: new Date().toISOString().split('T')[0]
-    };
-    await ApiService.saveTempResident(data);
-    loadData();
-    hideDetailView();
+// Cập nhật: Form tạm trú hỗ trợ chỉnh sửa
+// START: Replace showTempForm function (around line 768-790)
+function showTempForm(id = null) {
+    const isEdit = id !== null;
+    const t = isEdit ? tempResidents.find(x => x.id === id) : {};
+
+    const contentHtml = `
+    <h4>Thông tin cơ bản</h4>
+    <div class="form-grid-2">
+        <div class="form-group"><label>Họ tên:<span style="color:red">*</span></label><input id="tmp_ten" value="${t.ten || ''}"></div>
+        <div class="form-group"><label>Ngày sinh:<span style="color:red">*</span></label><input type="date" id="tmp_ns" value="${t.ngaySinh || ''}"></div>
+        <div class="form-group"><label>Giới tính:</label><select id="tmp_gt"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></div>
+        <div class="form-group"><label>Số điện thoại:</label><input id="tmp_sdt" value="${t.sdt || ''}"></div>
+        <div class="form-group"><label>Email:</label><input type="email" id="tmp_email" value="${t.email || ''}"></div>
+        <div class="form-group"><label>Nơi sinh:</label><input id="tmp_noisinh" value="${t.noiSinh || ''}"></div>
+    </div>
+    
+    <h4 style="margin-top: 20px;">Giấy tờ tùy thân</h4>
+    <div class="form-grid-2">
+        <div class="form-group"><label>Số CCCD:<span style="color:red">*</span></label><input id="tmp_cccd" value="${t.cccd || ''}"></div>
+        <div class="form-group"><label>Ngày cấp:</label><input type="date" id="tmp_cccd_nc" value="${t.cccdNgayCap || ''}"></div>
+        <div class="form-group full-width"><label>Nơi cấp:</label><input id="tmp_cccd_noicap" value="${t.cccdNoiCap || ''}"></div>
+    </div>
+    
+    <h4 style="margin-top: 20px;">Thông tin dân tộc & tôn giáo</h4>
+    <div class="form-grid-2">
+        <div class="form-group"><label>Dân tộc:</label><input id="tmp_dantoc" value="${t.danToc || 'Kinh'}"></div>
+        <div class="form-group"><label>Tôn giáo:</label><input id="tmp_tongiao" value="${t.tonGiao || 'Không'}"></div>
+        <div class="form-group"><label>Quốc tịch:</label><input id="tmp_quoctich" value="${t.quocTich || 'Việt Nam'}"></div>
+        <div class="form-group"><label>Nguyên quán:</label><input id="tmp_que" value="${t.queQuan || ''}"></div>
+    </div>
+    
+    <h4 style="margin-top: 20px;">Trình độ & nghề nghiệp</h4>
+    <div class="form-grid-2">
+        <div class="form-group"><label>Trình độ học vấn:</label><input id="tmp_hocvan" value="${t.trinhDoHocVan || ''}"></div>
+        <div class="form-group"><label>Nghề nghiệp:</label><input id="tmp_nghe" value="${t.nghe || ''}"></div>
+        <div class="form-group full-width"><label>Nơi làm việc:</label><input id="tmp_noilamviec" value="${t.noiLamViec || ''}"></div>
+    </div>
+    
+    <h4 style="margin-top: 20px;">Địa chỉ</h4>
+    <div class="form-grid-2">
+        <div class="form-group full-width"><label>Thường trú:</label><input id="tmp_tt" value="${t.diaChiThuongTru || ''}"></div>
+        <div class="form-group full-width"><label>Nơi tạm trú:<span style="color:red">*</span></label><input id="tmp_noio" value="${t.noiTamTru || ''}"></div>
+    </div>
+    
+    <h4 style="margin-top: 20px;">Thông tin tạm trú</h4>
+    <div class="form-grid-2">
+        <div class="form-group"><label>Ngày đăng ký:</label><input type="date" id="tmp_ngaydk" value="${t.ngayDangKy || ''}"></div>
+        <div class="form-group"><label>Thời hạn:</label><input id="tmp_th" value="${t.thoiHanTamTru || ''}" placeholder="VD: 6 tháng, 1 năm"></div>
+    </div>
+    
+    <div class="form-actions">
+        <button class="btn success" onclick="saveTemp('${id}')">Lưu</button>
+        <button class="btn" onclick="cancelForm()">Hủy</button>
+    </div>
+    `;
+    showDetailView(isEdit ? "Sửa tạm trú" : "Thêm tạm trú", contentHtml, true);
+    if(t.gioiTinh) document.getElementById('tmp_gt').value = t.gioiTinh;
+}
+// END: showTempForm
+
+async function saveTemp(id) {
+  const data = {
+    id: id !== 'null' ? id : null,
+    ten: document.getElementById('tmp_ten').value,
+    ngaySinh: document.getElementById('tmp_ns').value,
+    gioiTinh: document.getElementById('tmp_gt').value,
+    sdt: document.getElementById('tmp_sdt').value,
+    email: document.getElementById('tmp_email').value,
+    noiSinh: document.getElementById('tmp_noisinh').value,
+    cccd: document.getElementById('tmp_cccd').value,
+    cccdNgayCap: document.getElementById('tmp_cccd_nc').value,
+    cccdNoiCap: document.getElementById('tmp_cccd_noicap').value,
+    danToc: document.getElementById('tmp_dantoc').value,
+    tonGiao: document.getElementById('tmp_tongiao').value,
+    quocTich: document.getElementById('tmp_quoctich').value,
+    queQuan: document.getElementById('tmp_que').value,
+    trinhDoHocVan: document.getElementById('tmp_hocvan').value,
+    nghe: document.getElementById('tmp_nghe').value,
+    noiLamViec: document.getElementById('tmp_noilamviec').value,
+    diaChiThuongTru: document.getElementById('tmp_tt').value,
+    noiTamTru: document.getElementById('tmp_noio').value,
+    ngayDangKy: document.getElementById('tmp_ngaydk').value || new Date().toISOString().split('T')[0],
+    thoiHanTamTru: document.getElementById('tmp_th').value
+  };
+
+  if (!data.ten || !data.ngaySinh || !data.cccd || !data.noiTamTru) {
+    alert("Vui lòng điền đầy đủ các trường bắt buộc (*)!");
+    return;
+  }
+
+  await ApiService.saveTempResident(data);
+  loadData();
+  hideDetailView();
 }
 
 async function deleteTemp(id) {
-    if(confirm("Xóa tạm trú?")) {
-        await ApiService.deleteTempResident(id);
-        loadData();
-    }
+  if (confirm("Xóa tạm trú?")) {
+    await ApiService.deleteTempResident(id);
+    loadData();
+  }
 }
 
 function renderAbsent() {
   const tb = document.querySelector("#absentTable tbody");
   tb.innerHTML = "";
+  if (!absentResidents || absentResidents.length === 0) {
+    tb.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Không có dữ liệu</td></tr>";
+    return;
+  }
   absentResidents.forEach((t, i) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${i + 1}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.cccd}</td><td>${t.noiChuyenDen}</td>
-    <td><button class='btn small danger' onclick="deleteAbsent('${t.id}')">Xóa</button></td>`;
+    tr.innerHTML = `<td> ${i + 1}</td ><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.cccd}</td><td>${t.noiChuyenDen}</td>
+    <td>
+        <button class='btn small primary' onclick="showAbsentDetail('${t.id}')">Chi tiết</button>
+        <button class='btn small success' onclick="showAbsentForm('${t.id}')">Sửa</button>
+        <button class='btn small danger' onclick="deleteAbsent('${t.id}')">Xóa</button>
+    </td>`;
     tb.appendChild(tr);
   });
 }
 
-function showAbsentForm() {
+// Hàm xem chi tiết tạm vắng (có nút sửa)
+
+// START: Enhanced showAbsentDetail function (around line 838-852)
+function showAbsentDetail(id) {
+    const t = absentResidents.find(x => x.id === id);
+    if(!t) return;
     const contentHtml = `
-    <div class="form-grid-2">
-        <div class="form-group"><label>Họ tên:</label><input id="abs_ten"></div>
-        <div class="form-group"><label>Nơi chuyển đến:</label><input id="abs_den"></div>
+    <h3 class="detail-name-title">${t.ten}</h3>
+    <div class="info-vertical-list">
+        <div class="info-item-row"><label>Họ và tên</label><span>${t.ten}</span></div>
+        <div class="info-item-row"><label>Ngày sinh</label><span>${formatDate(t.ngaySinh)}</span></div>
+        <div class="info-item-row"><label>Giới tính</label><span>${t.gioiTinh}</span></div>
+        <div class="info-item-row"><label>Số điện thoại</label><span>${t.sdt || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Số CCCD</label><span>${t.cccd || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(t.cccdNgayCap) || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nơi cấp CCCD</label><span>${t.cccdNoiCap || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nghề nghiệp</label><span>${t.nghe || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Dân tộc</label><span>${t.danToc || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Tôn giáo</label><span>${t.tonGiao || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Quốc tịch</label><span>${t.quocTich || 'Việt Nam'}</span></div>
+        <div class="info-item-row"><label>Quê quán</label><span>${t.queQuan || 'N/A'}</span></div>
+        <div class="info-item-row full-width"><label>Thường trú</label><span>${t.diaChiThuongTru || 'N/A'}</span></div>
+        <div class="info-item-row full-width" style="border-top: 2px solid #e74c3c; margin-top: 10px; padding-top: 10px;"><label><strong>Nơi chuyển đến</strong></label><span><strong>${t.noiChuyenDen}</strong></span></div>
+        <div class="info-item-row"><label>Ngày đăng ký</label><span>${formatDate(t.ngayDangKy)}</span></div>
+        <div class="info-item-row"><label>Thời hạn</label><span>${t.thoiHanTamVang || 'N/A'}</span></div>
     </div>
-    <div class="form-actions"><button class="btn success" onclick="saveAbsent()">Lưu</button></div>
+    <div class="form-actions"><button class="btn success" onclick="showAbsentForm('${t.id}')">Chỉnh sửa</button></div>
     `;
-    showDetailView("Đăng ký tạm vắng", contentHtml, true);
+    showDetailView("Chi tiết tạm vắng", contentHtml);
 }
 
-async function saveAbsent() {
-    const data = {
-        ten: document.getElementById('abs_ten').value,
-        noiChuyenDen: document.getElementById('abs_den').value,
-        ngayDangKy: new Date().toISOString().split('T')[0]
-    };
-    await ApiService.saveAbsentResident(data);
-    loadData();
-    hideDetailView();
+// CẬP NHẬT: Form Tạm Vắng Đầy Đủ Thông Tin
+function showAbsentForm(id = null) {
+  const isEdit = id !== 'null' && id !== null;
+  const t = isEdit ? absentResidents.find(x => x.id === id) : {};
+
+  const contentHtml = `
+  < div class="form-grid-2" >
+        <div class="form-group">
+            <label>Nhân khẩu (ID):</label>
+            <input type="text" id="abs_nkid" value="${t.nhanKhauId || ''}" placeholder="Nhập ID nhân khẩu (NK001...)">
+        </div>
+        <div class="form-group">
+            <label>Họ và tên:</label>
+            <input type="text" id="abs_ten" value="${t.ten || ''}">
+        </div>
+        
+        <div class="form-group">
+            <label>Ngày sinh:</label>
+            <input type="date" id="abs_ns" value="${t.ngaySinh || ''}">
+        </div>
+        <div class="form-group">
+            <label>Giới tính:</label>
+            <select id="abs_gt">
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Số CCCD:</label>
+            <input type="text" id="abs_cccd" value="${t.cccd || ''}">
+        </div>
+        <div class="form-group">
+            <label>Thuộc hộ khẩu:</label>
+            <input type="text" id="abs_hk" value="${t.hoKhau || ''}">
+        </div>
+        
+        <div class="form-group">
+            <label>Ngày đăng ký tạm vắng:</label>
+            <input type="date" id="abs_ngay" value="${t.ngayDangKy || ''}">
+        </div>
+        <div class="form-group">
+            <label>Thời hạn tạm vắng:</label>
+            <input type="text" id="abs_th" value="${t.thoiHanTamVang || ''}" placeholder="2 năm, 1 tháng...">
+        </div>
+    </div >
+    
+    <div class="form-group">
+        <label>Địa chỉ cũ:</label>
+        <input type="text" id="abs_cu" value="${t.diaChiCu || ''}">
+    </div>
+    <div class="form-group">
+        <label>Nơi chuyển đến:</label>
+        <input type="text" id="abs_den" value="${t.noiChuyenDen || ''}">
+    </div>
+    
+    <div class="form-actions">
+        <button class="btn success" onclick="saveAbsent('${id}')">Lưu</button>
+        <button class="btn" onclick="cancelForm()">Hủy</button>
+    </div>
+`;
+
+  showDetailView(isEdit ? "Sửa tạm vắng" : "Thêm tạm vắng", contentHtml, true);
+  if (t.gioiTinh) document.getElementById('abs_gt').value = t.gioiTinh;
+}
+
+async function saveAbsent(id) {
+  const data = {
+    id: id !== 'null' ? id : null,
+    nhanKhauId: document.getElementById('abs_nkid').value,
+    ten: document.getElementById('abs_ten').value,
+    ngaySinh: document.getElementById('abs_ns').value,
+    gioiTinh: document.getElementById('abs_gt').value,
+    cccd: document.getElementById('abs_cccd').value,
+    hoKhau: document.getElementById('abs_hk').value,
+    ngayDangKy: document.getElementById('abs_ngay').value || new Date().toISOString().split('T')[0],
+    thoiHanTamVang: document.getElementById('abs_th').value,
+    diaChiCu: document.getElementById('abs_cu').value,
+    noiChuyenDen: document.getElementById('abs_den').value
+  };
+
+  await ApiService.saveAbsentResident(data);
+  loadData();
+  hideDetailView();
 }
 
 async function deleteAbsent(id) {
-    if(confirm("Xóa tạm vắng?")) {
-        await ApiService.deleteAbsentResident(id);
-        loadData();
-    }
+  if (confirm("Xóa tạm vắng?")) {
+    await ApiService.deleteAbsentResident(id);
+    loadData();
+  }
 }
 
 function renderRewards() {
   const tb = document.querySelector("#rewardTable tbody");
   tb.innerHTML = "";
   rewards.forEach(r => {
-      tb.innerHTML += `<tr><td>${r.id}</td><td>${r.loai}</td><td>${r.giaTri}</td><td>-</td><td><button class="btn small">Sửa</button></td></tr>`;
+    tb.innerHTML += `< tr ><td>${r.id}</td><td>${r.loai}</td><td>${r.giaTri}</td><td>-</td><td><button class="btn small">Sửa</button></td></tr > `;
   });
 }
 
@@ -802,7 +1025,7 @@ function calculateAge(dobString) {
   if (!dobString) return -1;
   const dob = new Date(dobString);
   const diff_ms = Date.now() - dob.getTime();
-  const age_dt = new Date(diff_ms); 
+  const age_dt = new Date(diff_ms);
   return Math.abs(age_dt.getUTCFullYear() - 1970);
 }
 
@@ -817,14 +1040,14 @@ function updateStats(filterType = 'gender') {
   let stats = {};
   let labels = [];
   let data = [];
-  
+
   const totalHouseholds = households.length;
   // Chỉ đếm nhân khẩu đang thường trú (không có ghi chú đặc biệt)
   const totalResidents = residents.filter(r => !r.ghiChu).length;
   const totalTemp = tempResidents.length;
-  const totalAbsent = absentResidents.length; 
+  const totalAbsent = absentResidents.length;
 
-  const summaryHtml = `<p><b>Tổng số hộ khẩu:</b> ${totalHouseholds} | <b>Tổng số nhân khẩu (đang thường trú):</b> ${totalResidents} | <b>Tổng số tạm trú:</b> ${totalTemp} | <b>Tổng số tạm vắng:</b> ${totalAbsent}</p>`;
+  const summaryHtml = `< p > <b>Tổng số hộ khẩu:</b> ${totalHouseholds} | <b>Tổng số nhân khẩu (đang thường trú):</b> ${totalResidents} | <b>Tổng số tạm trú:</b> ${totalTemp} | <b>Tổng số tạm vắng:</b> ${totalAbsent}</p > `;
 
   if (filterType === 'gender') {
     stats = {
@@ -833,7 +1056,7 @@ function updateStats(filterType = 'gender') {
     };
     labels = Object.keys(stats);
     data = Object.values(stats);
-  } 
+  }
   else if (filterType === 'ageGroup') {
     stats = {
       "Mầm non (0-2)": 0,
@@ -869,21 +1092,21 @@ function updateStats(filterType = 'gender') {
   }
 
   document.getElementById("statsSummary").innerHTML = summaryHtml;
-  
+
   const chart = document.getElementById("chart");
   const chartLabels = document.getElementById("chartLabels");
   chart.innerHTML = "";
   chartLabels.innerHTML = "";
-  
+
   const maxVal = Math.max(...data, 1);
-  
+
   data.forEach((val, index) => {
     const barHeight = (val / maxVal) * 100;
     chart.innerHTML += `
-      <div class='bar' style='height:${barHeight}%'>
-        <span>${val}</span>
-      </div>`;
-    chartLabels.innerHTML += `<div class='bar-label'>${labels[index]}</div>`;
+  < div class='bar' style = 'height:${barHeight}%' >
+    <span>${val}</span>
+      </div > `;
+    chartLabels.innerHTML += `< div class='bar-label' > ${labels[index]}</div > `;
   });
 }
 
@@ -915,8 +1138,8 @@ function formatDate(dateString) {
   if (!dateString || dateString === "N/A") return "N/A";
   try {
     if (dateString.includes('-')) {
-        const [year, month, day] = dateString.split('-');
-        if (day && month && year) return `${day}/${month}/${year}`;
+      const [year, month, day] = dateString.split('-');
+      if (day && month && year) return `${day} /${month}/${year} `;
     }
     return dateString;
   } catch (e) { return dateString; }
@@ -925,6 +1148,3 @@ function formatDiaChi(diaChiObj) {
   if (!diaChiObj) return "";
   return [diaChiObj.soNha, diaChiObj.duong, diaChiObj.phuong, diaChiObj.quan, diaChiObj.tinh].filter(Boolean).join(', ');
 }
-
-
-//

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản lý dân cư</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  
+  <!-- Trang Đăng nhập -->
+  <div id="loginPage">
+    <div class="login-box"> 
+      <h2>Đăng nhập hệ thống</h2>
+      <input type="text" id="username" placeholder="Tên đăng nhập">
+      <input type="password" id="password" placeholder="Mật khẩu">
+      <button id="loginBtn">Đăng nhập</button>
+      <p class="error-msg" id="errorMsg"></p>
+    </div>
+  </div>
+
+  <!-- Ứng dụng chính -->
+  <div id="app">
+    <div class="container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <!-- Sửa: Link brand về trang hộ khẩu -->
+        <div class="brand" id="brandLogo" data-section="households" style="cursor: pointer;">Tổ dân phố 7</div>
+        
+        <!-- Sửa: Xóa Trang chủ, đặt Hộ khẩu là active mặc định -->
+        <div class="nav-item active" data-section="households">🏠 Hộ khẩu</div>
+        <div class="nav-item" data-section="residents">👪 Nhân khẩu</div>
+        <div class="nav-item" data-section="residence" id="residenceMain">📋 Đăng ký tạm trú / tạm vắng</div>
+        <div class="nav-sub" id="residenceSub">
+          <div class="nav-item" data-section="residence_temp">➕ Danh sách tạm trú</div>
+          <div class="nav-item" data-section="residence_absent">➖ Danh sách tạm vắng</div>
+        </div>
+        <div class="nav-item" data-section="stats">📊 Thống kê</div>
+        <div class="nav-item" data-section="rewards">🎁 Phần thưởng</div>
+
+        <div class="sidebar-bottom"><button class="btn-outline" id="logoutBtn">Đăng xuất</button></div>
+      </aside>
+
+      <!-- Nội dung chính -->
+      <main class="main">
+        <!-- Lớp phủ cho chi tiết/chỉnh sửa -->
+        <div id="detailView" class="detail-view">
+          <div class="detail-view-header">
+            <button id="detailViewBackBtn" class="back-btn"><span>&#8592;</span></button>
+            <h2 id="detailViewTitle">Chi tiết</h2>
+          </div>
+          <div id="detailViewContent" class="detail-view-content">
+            <!-- Nội dung chi tiết/form sẽ được chèn vào đây -->
+          </div>
+        </div>
+
+        <!-- Header cố định -->
+        <header class="main-header" id="mainHeader">
+          <h1 id="headerTitle">Quản lý hộ khẩu</h1>
+          <div id="headerActions">
+            <!-- Các nút hành động (ví dụ: Thêm) và thanh tìm kiếm sẽ được chuyển vào đây -->
+          </div>
+        </header>
+
+        <!-- Các Section -->
+        <div class="main-content-area">
+          <!-- Sửa: Xóa Section Trang chủ -->
+
+          <section id="households" class="section active"> <!-- Sửa: Thêm class 'active' ở đây -->
+            <table id="householdTable">
+              <thead>
+                <tr>
+                  <th>STT</th> <!-- Sửa lỗi 5 -->
+                  <th>Mã hộ khẩu</th>
+                  <th>Chủ hộ</th>
+                  <th>Số nhân khẩu</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </section>
+          
+          <section id="residents" class="section">
+            <table id="residentTable">
+              <thead>
+                <!-- Sửa lỗi 5: Cập nhật cột -->
+                <tr>
+                  <th>STT</th>
+                  <th>Họ và tên</th>
+                  <th>Ngày sinh</th>
+                  <th>Giới tính</th>
+                  <th>Ghi chú</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </section>
+
+          <section class="section" id="residence_temp">
+            <table id="tempTable">
+              <thead>
+                <tr>
+                  <th>STT</th> <!-- Sửa lỗi 5 -->
+                  <th>Họ và tên</th>
+                  <th>Ngày sinh</th>
+                  <th>Giới tính</th>
+                  <th>Số CCCD</th>
+                  <!-- Sửa lỗi 6: Cập nhật cột -->
+                  <th>Quê quán</th>
+                  <th>Hành động</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </section>
+
+          <!-- Sửa lỗi 2: Cập nhật trang Tạm vắng -->
+          <section id="residence_absent" class="section">
+            <table id="absentTable">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Họ và tên</th>
+                  <th>Ngày sinh</th>
+                  <th>Giới tính</th>
+                  <th>Số CCCD</th>
+                  <th>Nơi chuyển đến</th>
+                  <!-- Sửa lỗi 7: Bỏ cột thời hạn -->
+                  <th>Hành động</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </section>
+
+          <section id="stats" class="section">
+            <div class="card">
+              <div class="stats-filters">
+                <span>Thống kê theo:</span>
+                <button class="btn small primary active" onclick="updateStats('gender')">Giới tính</button>
+                <button class="btn small primary" onclick="updateStats('ageGroup')">Độ tuổi</button>
+                <button class="btn small primary" onclick="updateStats('residence')">Tạm trú/vắng</button>
+              </div>
+            </div>
+            <div class="card" id="statsSummary"></div>
+            <div class="card">
+              <div class="chart-container">
+                <div class="chart" id="chart"></div>
+                <div class="chart-labels" id="chartLabels"></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="rewards" class="section">
+            <table id="rewardTable">
+              <thead><tr><th>Đợt</th><th>Loại</th><th>Tổng giá trị</th><th>Chi tiết</th><th>Thao tác</th></tr></thead>
+<tbody></tbody>
+            </table>
+          </section>
+        </div>
+      </main>
+    </div>
+
+   
+
+    <!-- Sửa lỗi 4: Modal xác nhận Hủy -->
+    <div id="confirmModal" class="confirm-modal">
+      <div class="confirm-modal-content">
+        <h3 id="confirmModalTitle">Xác nhận</h3>
+        <p id="confirmModalMessage">Bạn có thay đổi chưa lưu. Bạn có chắc muốn hủy không?</p>
+        <div class="confirm-modal-actions">
+          <button id="confirmModalCancel" class="btn small">Ở lại</button>
+          <button id="confirmModalConfirm" class="btn small danger">Hủy và Thoát</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/app.js"></script> 
+</body>
+</html>

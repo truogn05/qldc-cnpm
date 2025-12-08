@@ -30,7 +30,6 @@ body{
 .btn.danger:hover{background:#c0392b;}
 .btn.success{background:#2ecc71;color:white;}
 .btn.success:hover{background:#27ae60;}
-/* Sửa lỗi 1: CSS cho nút logout */
 .btn.outline, .sidebar-bottom #logoutBtn {
   background:transparent;
   border:1px solid #fff;
@@ -56,7 +55,6 @@ body{
   width: 250px;
   font-size: 14px;
 }
-/* Sửa lỗi 3: Tăng kích thước nút/input header */
 .main-header .search-bar {
   padding: 10px 14px;
   width: 280px;
@@ -93,7 +91,7 @@ body{
   margin:8px 0;
   border-radius:8px;
   border:1px solid #ccc;
-  box-sizing: border-box; /* Thêm cái này */
+  box-sizing: border-box;
 }
 .login-box button{
   background:#0a74bb;
@@ -120,7 +118,7 @@ body{
   padding:25px 20px;
   display:flex;
   flex-direction:column;
-  flex-shrink: 0; /* Ngăn co lại */
+  flex-shrink: 0;
 }
 .brand{
   font-size:26px;
@@ -174,7 +172,7 @@ body{
   display: flex;
   flex-direction: column;
   overflow:hidden;
-  position: relative; /* Cho detailView */
+  position: relative;
 }
 
 /* Header cố định */
@@ -202,7 +200,7 @@ body{
 /* Khu vực nội dung cuộn */
 .main-content-area {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto; /* Cho phép cuộn dọc */
   padding: 25px;
 }
 
@@ -222,33 +220,37 @@ table{
   border-collapse:collapse;
   background: white;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: hidden ;
+  /* overflow: hidden; -> Bỏ cái này để sticky header hoạt động tốt hơn */
   box-shadow: 0 5px 15px rgba(0,0,0,0.07);
 }
 th,td{padding:12px 15px;border-bottom:1px solid #ddd;text-align:left;}
+
+/* --- CỐ ĐỊNH HEADER BẢNG (Yêu cầu 2) --- */
 th{
   background:#f5f9fc; 
   font-weight: 600;
-  /* Sửa lỗi 1: Giữ header bảng cố định khi cuộn */
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  position: sticky; /* Dính */
+  top: 0; /* Dính lên đầu */
+  z-index: 10; /* Nổi lên trên nội dung */
+  box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); /* Tạo bóng nhẹ ngăn cách */
 }
+
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: #f9fcfd; }
-table.history-table th { background: #f9f9f9; }
+table.history-table th { background: #f9f9f9; top: 0; } 
 
 /* === Chi tiết/Chỉnh sửa (Trong Main) === */
 .detail-view {
-  display: none; /* Ẩn ban đầu */
+  display: none;
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background: #e9f5fb;
-  z-index: 10;
-  flex-direction: column; /* Đổi thành flex-direction */
+  z-index: 20; /* Tăng z-index để che header bảng */
+  flex-direction: column;
   overflow: hidden;
 }
 .detail-view-header {
@@ -259,7 +261,7 @@ table.history-table th { background: #f9f9f9; }
   border-bottom: 1px solid #ddd;
   position: sticky;
   top: 0;
-  flex-shrink: 0; /* Ngăn header co lại */
+  flex-shrink: 0;
 }
 .back-btn {
   background: #eee;
@@ -285,7 +287,6 @@ table.history-table th { background: #f9f9f9; }
 .detail-view-content h3 { color: #0a74bb; margin-bottom: 15px; }
 .detail-view-content p { margin-bottom: 10px; line-height: 1.6; }
 
-/* Sửa lỗi 4: Layout chi tiết nhân khẩu */
 .detail-name-title {
   font-size: 24px;
   font-weight: 700;
@@ -304,7 +305,7 @@ table.history-table th { background: #f9f9f9; }
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-  flex-basis: calc(50% - 5px); /* 2 cột */
+  flex-basis: calc(50% - 5px);
 }
 .info-item-row.full-width {
   flex-basis: 100%;
@@ -322,8 +323,6 @@ table.history-table th { background: #f9f9f9; }
   color: #04263b;
 }
 
-
-/* Form trong Detail View */
 .form-group { margin-bottom: 15px; }
 .form-group label {
   display: block;
@@ -345,15 +344,13 @@ table.history-table th { background: #f9f9f9; }
   grid-template-columns: 1fr 1fr;
   gap: 15px;
 }
-/* Sửa lỗi 4: Thêm grid 3 cột */
 .form-grid-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 15px;
 }
 
-
-/* Sửa lỗi 3: CSS cho Sổ Hộ Khẩu mới (trong detailView) */
+/* Sổ Hộ Khẩu View */
 .book-title {
   text-align: center;
   font-size: 28px;
@@ -372,15 +369,13 @@ table.history-table th { background: #f9f9f9; }
 .book-section h3 {
   border-bottom: 2px solid #eee;
   padding-bottom: 10px;
-  /* Sửa lỗi 4: Giữ tiêu đề Sổ Hộ Khẩu */
-  /* position: sticky; */
   top: 0;
   background: #fff;
   z-index: 2;
 }
 .book-members-list {
   display: grid;
-  grid-template-columns: 1fr; /* 1 cột cho đơn giản */
+  grid-template-columns: 1fr;
   gap: 15px;
 }
 .book-member-card {
@@ -397,7 +392,7 @@ table.history-table th { background: #f9f9f9; }
   gap: 8px;
 }
 .book-member-card .info-item-row {
-  flex-basis: calc(50% - 4px); /* 2 cột trong thẻ thành viên */
+  flex-basis: calc(50% - 4px);
   padding: 10px;
   background: #fdfdfd;
   box-shadow: none;
@@ -407,13 +402,7 @@ table.history-table th { background: #f9f9f9; }
   flex-basis: 100%;
 }
 
-
-/* Sửa lỗi 3: Xóa CSS cho book-view popup */
-/* .book-view { ... đã bị xóa ... } */
-/* .book-page { ... đã bị xóa ... } */
-
-
-/* Sửa lỗi 3: Giao diện Tách hộ */
+/* Tách hộ */
 .split-household-container {
   display: flex;
   gap: 20px;
@@ -425,7 +414,7 @@ table.history-table th { background: #f9f9f9; }
   border-radius: 8px;
   box-shadow: 0 3px 10px rgba(0,0,0,0.05);
   padding: 15px;
-  height: 60vh; /* Giới hạn chiều cao */
+  height: 60vh;
   display: flex;
   flex-direction: column;
 }
@@ -473,7 +462,7 @@ table.history-table th { background: #f9f9f9; }
   color: #0966a6;
 }
 
-/* Sửa lỗi 4: Modal xác nhận */
+/* Modal xác nhận */
 .confirm-modal {
   display: none;
   position: fixed;
@@ -508,8 +497,7 @@ table.history-table th { background: #f9f9f9; }
   width: 100px;
 }
 
-
-/* === Thống kê === */
+/* Thống kê */
 .stats-filters {
   display: flex;
   flex-wrap: wrap;

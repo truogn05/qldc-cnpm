@@ -428,7 +428,7 @@ function showHouseholdForm(id = null) {
   const isEdit = id !== null;
   const h = isEdit ? households.find(x => x.id === id) : {  diaChi: {} };
   const ch = isEdit ? residents.find(x => x.ten === h.chuHo) : null;
-  const title = isEdit ? "Chỉnh sửa hộ khẩu" : "Thêm hộ khẩu mới";
+  const title = isEdit ? "Chỉnh sửa thông tin hộ khẩu" : "Thêm hộ khẩu mới";
 
   const contentHtml = `
     <div class="form-group"><label>Tên chủ hộ:</label><input type="text" id="formChuHo" value="${h.chuHo || ''}"></div>
@@ -560,24 +560,6 @@ function renderResidents(list = residents) {
   const tb = document.querySelector("#residentTable tbody");
   tb.innerHTML = "";
   
-  // const sourcePermanent = (list && list.length > 0) ? list : (list === null ? [] : residents);
-  // const safePermanent = Array.isArray(sourcePermanent) ? sourcePermanent : residents;
-
-  // const permanentList = safePermanent.map(r => {
-  //   let note = [];
-  //   if (r.vaiTro === 'Chủ hộ') note.push("Chủ hộ");
-  //   if (r.ghiChu && r.ghiChu.toLowerCase().includes('qua đời')) note.push("Đã qua đời");
-  //   const isAbsent = absentResidents.find(ab => ab.nhanKhauId === r.id);
-  //   if (isAbsent) note.push(`Tạm vắng`);
-
-  //   return {
-  //     ...r,
-  //     finalNote: note.join(", ")
-  //   };
-  // });
-
-  
-  
 
   if (list.length === 0) {
     tb.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Không có dữ liệu</td></tr>";
@@ -610,6 +592,7 @@ function showResidentDetail(id) {
   }
 
   if (!r) return;
+  
   const contentHtml = `
     <h3 class="detail-name-title">${r.ten}</h3>
     <div class="info-vertical-list">
@@ -649,48 +632,104 @@ function showResidentDetail(id) {
         ${isTemp ? `<div class="info-item-row full-width"><label>Đang tạm trú tại</label><span>${r.noiTamTru}</span></div>` : ''}
     </div>
     <div class="form-actions">
-        ${!isTemp ? `<button class="btn success" onclick='showResidentForm("${r.hoKhauId}", "${r.id}")'>Chỉnh sửa</button>` : ''}
+        ${!isTemp ? `<button class="btn success" onclick='showResidentForm( "${r.id}")'>Chỉnh sửa</button>` : ''}
     </div>
     `;
   showDetailView("Chi tiết nhân khẩu", contentHtml);
 }
 
-function showResidentForm(hkId, nkId = null) {
-  const isEdit = nkId !== null;
+function showResidentForm( nkId = null) {
+  const isEdit = nkId !== null;//có nkid thì là edit
   let r = {};
   if (isEdit) r = residents.find(x => x.id === nkId) || {};
 
   const contentHtml = `
+    <h4>Thông tin cơ bản</h4>
     <div class="form-grid-2">
-      <div class="form-group"><label>Họ tên:</label><input id="nk_ten" value="${r.ten || ''}"></div>
-      <div class="form-group"><label>Ngày sinh:</label><input type="date" id="nk_ns" value="${r.ngaySinh || ''}"></div>
-      <div class="form-group"><label>CCCD:</label><input id="nk_cccd" value="${r.cccd || ''}"></div>
-      <div class="form-group"><label>Quan hệ với chủ hộ:</label><input id="nk_qh" value="${r.vaiTro || ''}"></div>
-      <div class="form-group"><label>Giới tính:</label><select id="nk_gt"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></div>
-      <div class="form-group"><label>Nghề nghiệp:</label><input id="nk_nghe" value="${r.nghe || ''}"></div>
+        <div class="form-group"><label>Họ tên:<span style="color:red">*</span></label><input id="nk_ten" value="${r.ten || ''}"></div>
+        <div class="form-group"><label>Ngày sinh:<span style="color:red">*</span></label><input type="date" id="nk_ns" value="${r.ngaySinh || ''}"></div>
+        <div class="form-group"><label>Giới tính:<span style="color:red">*</span></label><select id="nk_gt"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></div>
+        <div class="form-group"><label>Số điện thoại:<span style="color:red">*</span></label><input id="nk_sdt" value="${r.sdt || ''}"></div>
+        <div class="form-group"><label>Email:</label><input type="email" id="nk_email" value="${r.email || ''}"></div>
+        <div class="form-group"><label>Nơi sinh:<span style="color:red">*</span></label><input id="nk_noisinh" value="${r.noiSinh || ''}"></div>
+        <div class="form-group"><label>Số CCCD:<span style="color:red">*</span></label><input id="nk_cccd" value="${r.cccd || ''}"></div>
     </div>
-    <div class="form-group"><label>Nguyên quán:</label><input id="nk_que" value="${r.queQuan || ''}"></div>
-    <div class="form-group"><label>Thường trú:</label><input id="nk_tt" value="${r.diaChiThuongTru || ''}"></div>
+    <div class="form-grid-2">
+        <div class="form-group"><label>Ngày cấp:<span style="color:red">*</span></label><input type="date" id="nk_cccd_nc" value="${r.cccdNgayCap || ''}"></div>
+        <div class="form-group full-width"><label>Nơi cấp:<span style="color:red">*</span></label><input id="nk_cccd_noicap" value="${r.cccdNoiCap || ''}"></div>
+        <div class="form-group"><label>Dân tộc:<span style="color:red">*</span></label><input id="nk_dantoc" value="${r.danToc || 'Kinh'}"></div>
+        <div class="form-group"><label>Tôn giáo:<span style="color:red">*</span></label><input id="nk_tongiao" value="${r.tonGiao || 'Không'}"></div>
+        <div class="form-group"><label>Quốc tịch:<span style="color:red">*</span></label><input id="nk_quoctich" value="${r.quocTich || 'Việt Nam'}"></div>
+        <div class="form-group"><label>Nguyên quán:<span style="color:red">*</span></label><input id="nk_que" value="${r.queQuan || ''}"></div>
+    </div>
     
-    <div class="form-actions"><button class="btn success" onclick="saveResident('${hkId}', '${nkId}')">Lưu</button><button class="btn" onclick="cancelForm()">Hủy</button></div>
+    
+    <div class="form-grid-2">
+        <div class="form-group"><label>Trình độ học vấn:<span style="color:red">*</span></label><input id="nk_hocvan" value="${r.trinhDoHocVan || ''}"></div>
+        <div class="form-group"><label>Nghề nghiệp:<span style="color:red">*</span></label><input id="nk_nghe" value="${r.nghe || ''}"></div>
+        <div class="form-group full-width"><label>Nơi làm việc:</label><input id="nk_noilamviec" value="${r.noiLamViec || ''}"></div>
+    </div>
+    
+    <h4 style="margin-top: 20px;">Địa chỉ</h4>
+    <div class="form-group full-width"><label>Địa chỉ thường trú:<span style="color:red">*</span></label><input id="nk_dctt" value="${r.diaChiThuongTru || ''}"  ${r.diaChiThuongTru ? 'readonly class="readonly-field"' : ''}></div>
+    <div class="form-group full-width"><label>Nơi ở hiện tại:<span style="color:red">*</span></label><input id="nk_noht" value="${r.noiOHienTai || ''}"  ${r.noiOHienTai ? 'readonly class="readonly-field"' : ''}></div>
+    
+    <div class="form-actions">
+      <button class="btn success" onclick="saveResident('${nkId}')">Lưu</button>
+      <button class="btn" onclick="cancelForm()">Hủy</button>
+    </div>
     `;
-  showDetailView(isEdit ? "Sửa nhân khẩu" : "Thêm nhân khẩu", contentHtml, true);
+  showDetailView(isEdit ? "Sửa thông tin nhân khẩu" : "Thêm nhân khẩu", contentHtml, true);
   if (r.gioiTinh) document.getElementById('nk_gt').value = r.gioiTinh;
 }
 
-async function saveResident(hkId, nkId) {
+async function saveResident( nkId) {
   const data = {
-    id: nkId === 'null' ? null : nkId,
-    hoKhauId: hkId,
-    ten: document.getElementById('nk_ten').value,
-    ngaySinh: document.getElementById('nk_ns').value,
-    cccd: document.getElementById('nk_cccd').value,
-    vaiTro: document.getElementById('nk_qh').value,
-    gioiTinh: document.getElementById('nk_gt').value,
-    nghe: document.getElementById('nk_nghe').value,
-    queQuan: document.getElementById('nk_que').value,
-    diaChiThuongTru: document.getElementById('nk_tt').value
+    id:               nkId !== 'null' ? nkId : null,
+    ten:              document.getElementById('nk_ten').value.trim(),
+    ngaySinh:         document.getElementById('nk_ns').value,
+    gioiTinh:         document.getElementById('nk_gt').value,
+    sdt:              document.getElementById('nk_sdt').value.trim(),
+    email:            document.getElementById('nk_email').value.trim(),
+    noiSinh:          document.getElementById('nk_noisinh').value.trim(),
+    cccd:             document.getElementById('nk_cccd').value.trim(),
+    cccdNgayCap:      document.getElementById('nk_cccd_nc').value,
+    cccdNoiCap:       document.getElementById('nk_cccd_noicap').value.trim(),
+    danToc:           document.getElementById('nk_dantoc').value.trim(),
+    tonGiao:          document.getElementById('nk_tongiao').value.trim(),
+    quocTich:         document.getElementById('nk_quoctich').value.trim(),
+    queQuan:          document.getElementById('nk_que').value.trim(),
+    trinhDoHocVan:    document.getElementById('nk_hocvan').value.trim(),
+    nghe:             document.getElementById('nk_nghe').value.trim(),
+    noiLamViec:       document.getElementById('nk_noilamviec').value.trim(),
+    diaChiThuongTru:  document.getElementById('nk_dctt').value.trim(),
+    noiOHienTai:      document.getElementById('nk_noht').value.trim()
   };
+  const requiredFields = [
+    { field: data.ten, name: 'Họ tên' },
+    { field: data.ngaySinh, name: 'Ngày sinh' },
+    { field: data.gioiTinh, name: 'Giới tính' },
+    { field: data.sdt, name: 'Số điện thoại' },
+    { field: data.noiSinh, name: 'Nơi sinh' },
+    { field: data.cccd, name: 'Số CCCD' },
+    { field: data.cccdNgayCap, name: 'Ngày cấp CCCD' },
+    { field: data.cccdNoiCap, name: 'Nơi cấp CCCD' },
+    { field: data.danToc, name: 'Dân tộc' },
+    { field: data.tonGiao, name: 'Tôn giáo' },
+    { field: data.quocTich, name: 'Quốc tịch' },
+    { field: data.queQuan, name: 'Nguyên quán' },
+    { field: data.trinhDoHocVan, name: 'Trình độ học vấn' },
+    { field: data.nghe, name: 'Nghề nghiệp' },
+    { field: data.diaChiThuongTru, name: 'Địa chỉ thường trú' },
+    { field: data.noiOHienTai, name: 'Nơi ở hiện tại' },    
+  ];
+
+  const missingFields = requiredFields.filter(f => !f.field).map(f => f.name);
+
+  if (missingFields.length > 0) {
+    alert("Vui lòng điền đầy đủ các trường bắt buộc (*):\n");
+    return;
+  }
 
   const res = await ApiService.saveResident(data);
   if (res.success) {
@@ -840,7 +879,7 @@ function showTempForm(id = null) {
         <button class="btn" onclick="cancelForm()">Hủy</button>
     </div>
     `;
-  showDetailView(isEdit ? "Sửa tạm trú" : "Đăng ký tạm trú", contentHtml, true);
+  showDetailView(isEdit ? "Sửa thông tin tạm trú" : "Đăng ký tạm trú", contentHtml, true);
   if (t.gioiTinh) document.getElementById('tmp_gt').value = t.gioiTinh;
 }
 

@@ -324,7 +324,7 @@ table.history-table th { background: #f9f9f9; top: 0; }
   color: #04263b;
 }
 
-.form-group { margin-bottom: 15px; }
+.form-group { margin-bottom: 5px; }
 .form-group label {
   display: block;
   margin-bottom: 5px;
@@ -341,6 +341,7 @@ table.history-table th { background: #f9f9f9; top: 0; }
 }
 .form-actions { margin-top: 20px; }
 .form-grid-2 {
+  margin-bottom: 15px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
@@ -623,4 +624,10 @@ table.history-table th { background: #f9f9f9; top: 0; }
   margin: 0;
   font-size: 16px;
   text-transform: uppercase;
+}
+
+.readonly-field {
+    background-color: #e9ecef;
+    opacity: 1; 
+    pointer-events: none; /* người dùng không tương tác được */
 }

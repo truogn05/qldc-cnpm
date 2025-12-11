@@ -72,6 +72,7 @@ app.get('/api/households', async (req, res) => {
                 'NK' + RIGHT('000' + CAST(nk.ID AS VARCHAR(10)), 3) as id,
                 nk.HOTEN as ten,
                 FORMAT(nk.NGAYSINH, 'yyyy-MM-dd') as ngaySinh,
+                nk.NOISINH as noiSinh,
                 nk.GIOITINH as gioiTinh,
                 nk.SODIENTHOAI as sdt,
                 nk.EMAIL as email,
@@ -118,37 +119,39 @@ app.get('/api/households', async (req, res) => {
 app.get('/api/residents', async (req, res) => {
     try {
         const pool = await connectDB();
-        const result = await pool.request().query(`
-            SELECT 
-                nk.ID as realId,
-                'NK' + RIGHT('000' + CAST(nk.ID AS VARCHAR(10)), 3) as id,
-                nk.HOTEN as ten,
-                FORMAT(nk.NGAYSINH, 'yyyy-MM-dd') as ngaySinh,
-                nk.GIOITINH as gioiTinh,
-                nk.SODIENTHOAI as sdt,
-                nk.EMAIL as email,
-                nk.SOCCCD as cccd,
-                FORMAT(cc.NGAYCAP, 'yyyy-MM-dd') as cccdNgayCap,
-                cc.NOICAP as cccdNoiCap,
-                nk.NGHENGHIEP as nghe,
-                nk.NOILAMVIEC as noiLamViec,
-                nk.TRINHDOHOCVAN as trinhDoHocVan,
-                nk.QUOCTICH as quocTich,
-                nk.DANTOC as danToc,
-                nk.TONGIAO as tonGiao,
-                nk.NGUYENQUAN as queQuan,
-                nk.NOITHUONGTRU as diaChiThuongTru,
-                tv.DIACHITRUOCKHICHUYENDEN as diaChiTruoc,
-                nk.DIACHIHIENNAY as noiOHienTai,
-                nk.GHICHU as ghiChu,
-                -- Lấy thêm thông tin Hộ khẩu và Vai trò để hiển thị
-                'HK' + RIGHT('000' + CAST(hk.ID AS VARCHAR(10)), 3) as hoKhauId,
-                tv.QUANHEVOICHUHO as vaiTro
-            FROM NHANKHAU nk
-            LEFT JOIN CANCUOCCONGDAN cc ON nk.SOCCCD = cc.SOCCCD
-            LEFT JOIN THANHVIENCUAHO tv ON nk.ID = tv.IDNHANKHAU
-            LEFT JOIN HOKHAU hk ON tv.IDHOKHAU = hk.ID
-        `);
+        const result = await pool.request()
+            .query(`
+                SELECT 
+                    nk.ID as realId,
+                    'NK' + RIGHT('000' + CAST(nk.ID AS VARCHAR(10)), 3) as id,
+                    nk.HOTEN as ten,
+                    FORMAT(nk.NGAYSINH, 'yyyy-MM-dd') as ngaySinh,
+                    nk.NOISINH as noiSinh,
+                    nk.GIOITINH as gioiTinh,
+                    nk.SODIENTHOAI as sdt,
+                    nk.EMAIL as email,
+                    nk.SOCCCD as cccd,
+                    FORMAT(cc.NGAYCAP, 'yyyy-MM-dd') as cccdNgayCap,
+                    cc.NOICAP as cccdNoiCap,
+                    nk.NGHENGHIEP as nghe,
+                    nk.NOILAMVIEC as noiLamViec,
+                    nk.TRINHDOHOCVAN as trinhDoHocVan,
+                    nk.QUOCTICH as quocTich,
+                    nk.DANTOC as danToc,
+                    nk.TONGIAO as tonGiao,
+                    nk.NGUYENQUAN as queQuan,
+                    nk.NOITHUONGTRU as diaChiThuongTru,
+                    tv.DIACHITRUOCKHICHUYENDEN as diaChiTruoc,
+                    nk.DIACHIHIENNAY as noiOHienTai,
+                    nk.GHICHU as ghiChu,
+                    -- Lấy thêm thông tin Hộ khẩu và Vai trò để hiển thị
+                    'HK' + RIGHT('000' + CAST(hk.ID AS VARCHAR(10)), 3) as hoKhauId,
+                    tv.QUANHEVOICHUHO as vaiTro
+                FROM NHANKHAU nk
+                LEFT JOIN CANCUOCCONGDAN cc ON nk.SOCCCD = cc.SOCCCD
+                LEFT JOIN THANHVIENCUAHO tv ON nk.ID = tv.IDNHANKHAU
+                LEFT JOIN HOKHAU hk ON tv.IDHOKHAU = hk.ID
+            `);
 
         res.json(result.recordset);
     } catch (err) {
@@ -219,39 +222,128 @@ app.post('/api/residents', async (req, res) => {
     try {
         const pool = await connectDB();
         // Nếu là thêm mới vào hộ
-        if (!data.id) {
+        if (!data.id) {//nếu id == null -> chưa có -> thêm
             const result = await pool.request()
                 .input('hoten', sql.NVarChar, data.ten)
                 .input('ngaysinh', sql.Date, data.ngaySinh)
                 .input('gioitinh', sql.NVarChar, data.gioiTinh)
-                .input('cccd', sql.VarChar, data.cccd || null)
+                .input('sdt', sql.NVarChar, data.sdt)
+                .input('email', sql.NVarChar, data.email)
+                .input('noisinh', sql.NVarChar, data.noiSinh)
+                .input('cccd', sql.NVarChar, data.cccd)
+                .input('cccd_nc', sql.Date, data.cccdNgayCap)
+                .input('cccd_noicap',sql.NVarChar, data.cccdNoiCap)
+                .input('dantoc', sql.NVarChar, data.danToc)
+                .input('tongiao', sql.NVarChar, data.tonGiao)
+                .input('quoctich', sql.NVarChar, data.quocTich)
+                .input('queQuan', sql.NVarChar, data.queQuan)
+                .input('trinhdohocvan', sql.NVarChar, data.trinhDoHocVan)
                 .input('nghe', sql.NVarChar, data.nghe)
-                .input('que', sql.NVarChar, data.queQuan)
-                .input('tt', sql.NVarChar, data.diaChiThuongTru)
-                .query(`INSERT INTO NHANKHAU (HOTEN, NGAYSINH, GIOITINH, SOCCCD, NGHENGHIEP, NGUYENQUAN, NOITHUONGTRU) 
-                        OUTPUT INSERTED.ID VALUES (@hoten, @ngaysinh, @gioitinh, @cccd, @nghe, @que, @tt)`);
+                .input('noilamviec', sql.NVarChar, data.noiLamViec)
+                .input('noiohientai', sql.NVarChar, data.noiOHienTai)
+                .query(`
+                    BEGIN TRANSACTION;
 
-            const newId = result.recordset[0].ID;
-            // Link vào hộ khẩu
-            if (data.hoKhauId) {
-                const hkIdInt = parseInt(data.hoKhauId.replace('HK', ''));
-                await pool.request()
-                    .input('idNk', sql.Int, newId)
-                    .input('idHk', sql.Int, hkIdInt)
-                    .input('qh', sql.NVarChar, data.vaiTro)
-                    .query(`INSERT INTO THANHVIENCUAHO (IDNHANKHAU, IDHOKHAU, QUANHEVOICHUHO) VALUES (@idNk, @idHk, @qh)`);
-            }
+                    INSERT INTO NHANKHAU
+                        (HOTEN, NGAYSINH, GIOITINH, SODIENTHOAI, EMAIL, NOISINH,
+                        SOCCCD, CCCD_NGAYCAP, CCCD_NOICAP,
+                        DANTOC, TONGIAO, QUOCTICH,
+                        NGUYENQUAN, TRINHDOHOCVAN, NGHENGHIEP,
+                        NOILAMVIEC, DIACHIHIENNAY)
+                    VALUES
+                        (@hoten, @ngaysinh, @gioitinh, @sdt, @email, @noisinh,
+                        @cccd, @cccd_nc, @cccd_noicap,
+                        @dantoc, @tongiao, @quoctich,
+                        @queQuan, @trinhdohocvan, @nghe,
+                        @noilamviec, @noiohientai);
+
+                    INSERT INTO CANCUOCCONGDAN (SOCCCD, NGAYCAP, NOICAP) VALUES
+                        (@cccd, @cccd_nc, @cccd_noicap);
+                    
+                    COMMIT TRANSACTION;
+                    `);
+
+
+
         } else {
             // Logic Update (Cần parse ID string 'NK001' -> 1)
             const idInt = parseInt(data.id.replace('NK', ''));
             await pool.request()
                 .input('id', sql.Int, idInt)
                 .input('hoten', sql.NVarChar, data.ten)
+                .input('ngaysinh', sql.Date, data.ngaySinh)
+                .input('gioitinh', sql.NVarChar, data.gioiTinh)
+                .input('sdt', sql.NVarChar, data.sdt)
+                .input('email', sql.NVarChar, data.email)
+                .input('noisinh', sql.NVarChar, data.noiSinh)
+                .input('cccd', sql.NVarChar, data.cccd)
+                .input('cccd_nc', sql.Date, data.cccdNgayCap)
+                .input('cccd_noicap',sql.NVarChar, data.cccdNoiCap)
+                .input('dantoc', sql.NVarChar, data.danToc)
+                .input('tongiao', sql.NVarChar, data.tonGiao)
+                .input('quoctich', sql.NVarChar, data.quocTich)
+                .input('queQuan', sql.NVarChar, data.queQuan)
+                .input('trinhdohocvan', sql.NVarChar, data.trinhDoHocVan)
+                .input('nghe', sql.NVarChar, data.nghe)
+                .input('noilamviec', sql.NVarChar, data.noiLamViec)
+                .input('noiohientai', sql.NVarChar, data.noiOHienTai)
                 // ... map các trường khác
-                .query(`UPDATE NHANKHAU SET HOTEN = @hoten WHERE ID = @id`);
+                .query(`
+                    BEGIN TRANSACTION;
+
+                    -- 1. Lấy CCCD cũ của nhân khẩu
+                    DECLARE @oldCCCD NVARCHAR(50);
+                    SELECT @oldCCCD = SOCCCD FROM NHANKHAU WHERE ID = @id;
+                    
+                    -- 3. Kiểm tra CCCD mới đã tồn tại hay chưa
+                    IF EXISTS (SELECT 1 FROM CANCUOCCONGDAN WHERE SOCCCD = @cccd)
+                    BEGIN
+                        -- Update nếu đã tồn tại
+                        UPDATE CANCUOCCONGDAN
+                        SET 
+                            NGAYCAP = @cccd_nc,
+                            NOICAP = @cccd_noicap
+                        WHERE SOCCCD = @cccd;
+                    END
+                    ELSE
+                    BEGIN
+                        -- Insert nếu chưa có
+                        INSERT INTO CANCUOCCONGDAN (SOCCCD, NGAYCAP, NOICAP)
+                        VALUES (@cccd, @cccd_nc, @cccd_noicap);
+                    END;
+
+                    -- 4. Update bảng nhân khẩu
+                    UPDATE NHANKHAU 
+                    SET 
+                        HOTEN = @hoten,
+                        NGAYSINH = @ngaysinh,
+                        GIOITINH = @gioitinh,
+                        SODIENTHOAI = @sdt,
+                        EMAIL = @email,
+                        NOISINH = @noisinh,
+                        DANTOC = @dantoc,
+                        TONGIAO = @tongiao,
+                        QUOCTICH = @quoctich,
+                        NGUYENQUAN = @queQuan,
+                        TRINHDOHOCVAN = @trinhdohocvan,
+                        NGHENGHIEP = @nghe,
+                        NOILAMVIEC = @noilamviec,
+                        DIACHIHIENNAY = @noiohientai,
+                        SOCCCD = @cccd
+                    WHERE ID = @id;
+
+                    -- 2. Nếu CCCD thay đổi thì xóa CCCD cũ
+                    IF (@oldCCCD IS NOT NULL AND @oldCCCD <> @cccd)
+                    BEGIN
+                        DELETE FROM CANCUOCCONGDAN WHERE SOCCCD = @oldCCCD;
+                    END;
+                    COMMIT TRANSACTION;
+
+                    `);// KIỂM TRA NẾU CCCD BỊ THAY ĐỔI THÌ PHẢI XOÁ CÁI CŨ ĐI
         }
         res.json({ success: true });
     } catch (err) {
+        console.error("Lỗi API residents:", err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -267,6 +359,7 @@ app.get('/api/temp-residents', async (req, res) => {
                 nk.HOTEN as ten,
                 FORMAT(nk.NGAYSINH, 'yyyy-MM-dd') as ngaySinh, 
                 nk.GIOITINH as gioiTinh, 
+                nk.NOISINH as noiSinh,
                 nk.SODIENTHOAI as sdt,
                 nk.EMAIL as email,
                 nk.SOCCCD as cccd,
@@ -278,7 +371,6 @@ app.get('/api/temp-residents', async (req, res) => {
                 nk.QUOCTICH as quocTich,
                 nk.DANTOC as danToc,
                 nk.TONGIAO as tonGiao,
-                nk.NOISINH as noiSinh,
                 nk.NGUYENQUAN as queQuan,
                 nk.NOITHUONGTRU as diaChiThuongTru, 
                 tt.NOIOHIENTAI AS noiTamTru,

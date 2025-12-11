@@ -73,15 +73,20 @@ app.get('/api/households', async (req, res) => {
                 nk.HOTEN as ten,
                 FORMAT(nk.NGAYSINH, 'yyyy-MM-dd') as ngaySinh,
                 nk.GIOITINH as gioiTinh,
+                nk.SODIENTHOAI as sdt,
+                nk.EMAIL as email,
                 nk.SOCCCD as cccd,
                 FORMAT(cc.NGAYCAP, 'yyyy-MM-dd') as cccdNgayCap,
                 cc.NOICAP as cccdNoiCap,
                 nk.NGHENGHIEP as nghe,
+                nk.NOILAMVIEC as noiLamViec,
+                nk.TRINHDOHOCVAN as trinhDoHocVan,
                 nk.QUOCTICH as quocTich,
                 nk.DANTOC as danToc,
                 nk.TONGIAO as tonGiao,
                 nk.NGUYENQUAN as queQuan,
                 nk.NOITHUONGTRU as diaChiThuongTru,
+                tv.DIACHITRUOCKHICHUYENDEN as diaChiTruoc,
                 nk.DIACHIHIENNAY as noiOHienTai,
                 tv.QUANHEVOICHUHO as vaiTro,
                 nk.GHICHU as ghiChu
@@ -120,15 +125,20 @@ app.get('/api/residents', async (req, res) => {
                 nk.HOTEN as ten,
                 FORMAT(nk.NGAYSINH, 'yyyy-MM-dd') as ngaySinh,
                 nk.GIOITINH as gioiTinh,
+                nk.SODIENTHOAI as sdt,
+                nk.EMAIL as email,
                 nk.SOCCCD as cccd,
                 FORMAT(cc.NGAYCAP, 'yyyy-MM-dd') as cccdNgayCap,
                 cc.NOICAP as cccdNoiCap,
                 nk.NGHENGHIEP as nghe,
+                nk.NOILAMVIEC as noiLamViec,
+                nk.TRINHDOHOCVAN as trinhDoHocVan,
                 nk.QUOCTICH as quocTich,
                 nk.DANTOC as danToc,
                 nk.TONGIAO as tonGiao,
                 nk.NGUYENQUAN as queQuan,
                 nk.NOITHUONGTRU as diaChiThuongTru,
+                tv.DIACHITRUOCKHICHUYENDEN as diaChiTruoc,
                 nk.DIACHIHIENNAY as noiOHienTai,
                 nk.GHICHU as ghiChu,
                 -- Lấy thêm thông tin Hộ khẩu và Vai trò để hiển thị
@@ -257,13 +267,24 @@ app.get('/api/temp-residents', async (req, res) => {
                 nk.HOTEN as ten,
                 FORMAT(nk.NGAYSINH, 'yyyy-MM-dd') as ngaySinh, 
                 nk.GIOITINH as gioiTinh, 
+                nk.SODIENTHOAI as sdt,
+                nk.EMAIL as email,
                 nk.SOCCCD as cccd,
                 FORMAT(cc.NGAYCAP, 'yyyy-MM-dd') as cccdNgayCap,
                 cc.NOICAP as cccdNoiCap,
-                nk.NGUYENQUAN as queQuan, 
+                nk.NGHENGHIEP as nghe,
+                nk.NOILAMVIEC as noiLamViec,
+                nk.TRINHDOHOCVAN as trinhDoHocVan,
+                nk.QUOCTICH as quocTich,
+                nk.DANTOC as danToc,
+                nk.TONGIAO as tonGiao,
+                nk.NOISINH as noiSinh,
+                nk.NGUYENQUAN as queQuan,
                 nk.NOITHUONGTRU as diaChiThuongTru, 
                 tt.NOIOHIENTAI AS noiTamTru,
+
                 FORMAT(tt.TUNGAY, 'yyyy-MM-dd') as ngayDangKy,
+                FORMAT(tt.DENNGAY, 'yyyy-MM-dd') as denNgay,
                 DATEDIFF(day, tt.TUNGAY, tt.DENNGAY) as thoiHanNgay
             FROM TAMTRU tt 
             JOIN NHANKHAU nk ON tt.IDNHANKHAU = nk.ID
@@ -288,9 +309,18 @@ app.get('/api/absent-residents', async (req, res) => {
                 nk.HOTEN as ten,
                 FORMAT(nk.NGAYSINH, 'yyyy-MM-dd') as ngaySinh, 
                 nk.GIOITINH as gioiTinh, 
+                nk.SODIENTHOAI as sdt,
+                nk.EMAIL as email,
                 nk.SOCCCD as cccd,
                 FORMAT(cc.NGAYCAP, 'yyyy-MM-dd') as cccdNgayCap,
                 cc.NOICAP as cccdNoiCap,
+                nk.NOISINH as noiSinh,
+                nk.NGHENGHIEP as nghe,
+                nk.NOILAMVIEC as noiLamViec,
+                nk.TRINHDOHOCVAN as trinhDoHocVan,
+                nk.QUOCTICH as quocTich,
+                nk.DANTOC as danToc,
+                nk.TONGIAO as tonGiao,
                 (SELECT TOP 1 'HK' + RIGHT('000' + CAST(IDHOKHAU AS VARCHAR(10)), 3) 
                 FROM THANHVIENCUAHO WHERE IDNHANKHAU = nk.ID) as hoKhau,
                 nk.NOITHUONGTRU as diaChiCu,
@@ -309,7 +339,6 @@ app.get('/api/absent-residents', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-
 app.post('/api/temp-residents', async (req, res) => {
     const data = req.body;
     const transaction = new sql.Transaction(await connectDB());
@@ -319,47 +348,14 @@ app.post('/api/temp-residents', async (req, res) => {
         const reqT = new sql.Request(transaction);
         let nkId = null;
 
-        // B1: Xử lý thông tin Nhân khẩu (Nếu có ID thì update, không thì tạo mới)
-        if (data.id && data.id.startsWith('TT')) {
-            // Trường hợp sửa: Lấy ID nhân khẩu từ bảng TAMTRU cũ để update
-            const oldRec = await new sql.Request().query(`SELECT IDNHANKHAU FROM TAMTRU WHERE ID = ${data.id.replace('TT', '')}`);
-            if (oldRec.recordset.length > 0) {
-                nkId = oldRec.recordset[0].IDNHANKHAU;
-                // Update Nhân khẩu
-                await reqT
-                    .input('idNk', sql.Int, nkId)
-                    .input('hoten', sql.NVarChar, data.ten)
-                    .input('ns', sql.Date, data.ngaySinh)
-                    .input('gt', sql.NVarChar, data.gioiTinh)
-                    .input('cccd', sql.VarChar, data.cccd)
-                    .input('que', sql.NVarChar, data.queQuan)
-                    .query(`UPDATE NHANKHAU SET HOTEN=@hoten, NGAYSINH=@ns, GIOITINH=@gt, SOCCCD=@cccd, NGUYENQUAN=@que WHERE ID=@idNk`);
-            }
-        }
-
-        if (!nkId) {
-            // Trường hợp thêm mới: Insert Nhân khẩu
-            const nkRes = await reqT
-                .input('newHoTen', sql.NVarChar, data.ten)
-                .input('newNs', sql.Date, data.ngaySinh)
-                .input('newGt', sql.NVarChar, data.gioiTinh)
-                .input('newCccd', sql.VarChar, data.cccd)
-                .input('newQue', sql.NVarChar, data.queQuan)
-                .input('newTt', sql.NVarChar, data.diaChiThuongTru) // Địa chỉ thường trú (ở quê)
-                .query(`INSERT INTO NHANKHAU (HOTEN, NGAYSINH, GIOITINH, SOCCCD, NGUYENQUAN, NOITHUONGTRU) 
-                        OUTPUT INSERTED.ID VALUES (@newHoTen, @newNs, @newGt, @newCccd, @newQue, @newTt)`);
-            nkId = nkRes.recordset[0].ID;
-        }
-
-        // B1.5: Xử lý bảng CANCUOCCONGDAN (nếu có thông tin CCCD)
+        // ================== B1: XỬ LÝ CCCD TRƯỚC (Tránh lỗi khóa ngoại) ==================
         if (data.cccd) {
-            // Kiểm tra xem CCCD đã tồn tại chưa
             const ccCheck = await reqT
                 .input('checkCccd', sql.VarChar, data.cccd)
                 .query(`SELECT SOCCCD FROM CANCUOCCONGDAN WHERE SOCCCD = @checkCccd`);
 
             if (ccCheck.recordset.length > 0) {
-                // Update nếu có ngày cấp và nơi cấp
+                // Update nếu có thông tin mới
                 if (data.cccdNgayCap || data.cccdNoiCap) {
                     await reqT
                         .input('cccdUpd', sql.VarChar, data.cccd)
@@ -368,7 +364,7 @@ app.post('/api/temp-residents', async (req, res) => {
                         .query(`UPDATE CANCUOCCONGDAN SET NGAYCAP=@ngayCap, NOICAP=@noiCap WHERE SOCCCD=@cccdUpd`);
                 }
             } else {
-                // Insert mới
+                // Insert CCCD mới
                 await reqT
                     .input('newCccdSo', sql.VarChar, data.cccd)
                     .input('newNgayCap', sql.Date, data.cccdNgayCap || new Date())
@@ -377,31 +373,135 @@ app.post('/api/temp-residents', async (req, res) => {
             }
         }
 
-        // B2: Xử lý bảng TAMTRU
-        if (data.id && data.id.startsWith('TT')) {
-            // Update Tạm trú
+        // ================== B2: XỬ LÝ NHÂN KHẨU ==================
+        // Trường hợp 1: Sửa bản ghi Tạm trú đã có
+        if (data.id && data.id !== 'null' && data.id.startsWith('TT')) {
+            const ttId = parseInt(data.id.replace('TT', ''));
+            const oldRec = await reqT.query(`SELECT IDNHANKHAU FROM TAMTRU WHERE ID = ${ttId}`);
+            if (oldRec.recordset.length > 0) {
+                nkId = oldRec.recordset[0].IDNHANKHAU;
+            }
+        } 
+        
+        // Trường hợp 2: Thêm mới Tạm trú, kiểm tra xem nhân khẩu này đã tồn tại chưa (qua CCCD)
+        if (!nkId && data.cccd) {
+             const nkCheck = await reqT
+                .input('checkNkCccd', sql.VarChar, data.cccd)
+                .query(`SELECT ID FROM NHANKHAU WHERE SOCCCD = @checkNkCccd`);
+             if (nkCheck.recordset.length > 0) {
+                 nkId = nkCheck.recordset[0].ID;
+             }
+        }
+
+        // Thực hiện Insert hoặc Update Nhân Khẩu
+        if (nkId) {
+            // Update thông tin nhân khẩu
+            await reqT
+                .input('idNk', sql.Int, nkId)
+                .input('hoten', sql.NVarChar, data.ten)
+                .input('ns', sql.Date, data.ngaySinh)
+                .input('gt', sql.NVarChar, data.gioiTinh)
+                .input('sdt', sql.VarChar, data.sdt || null)
+                .input('email', sql.VarChar, data.email || null)
+                .input('noisinh', sql.NVarChar, data.noiSinh || null)
+                .input('que', sql.NVarChar, data.queQuan || null)
+                .input('dantoc', sql.NVarChar, data.danToc || null)
+                .input('tongiao', sql.NVarChar, data.tonGiao || null)
+                .input('quoctich', sql.NVarChar, data.quocTich || null)
+                .input('hocvan', sql.NVarChar, data.trinhDoHocVan || null)
+                .input('nghe', sql.NVarChar, data.nghe || null)
+                .input('noilamviec', sql.NVarChar, data.noiLamViec || null)
+                .input('tt', sql.NVarChar, data.diaChiThuongTru || null)
+                .query(`
+                    UPDATE NHANKHAU SET 
+                        HOTEN=@hoten, 
+                        NGAYSINH=@ns, 
+                        GIOITINH=@gt, 
+                        SODIENTHOAI=@sdt,
+                        EMAIL=@email, 
+                        NOISINH=@noisinh, 
+                        NGUYENQUAN=@que, 
+                        DANTOC=@dantoc, TONGIAO=@tongiao, QUOCTICH=@quoctich, 
+                        TRINHDOHOCVAN=@hocvan, 
+                        NGHENGHIEP=@nghe, 
+                        NOILAMVIEC=@noilamviec, 
+                        NOITHUONGTRU=@tt
+                    WHERE ID=@idNk
+                `);
+        } else {
+            // Insert Nhân khẩu mới
+            const nkRes = await reqT
+                .input('newHoTen', sql.NVarChar, data.ten)
+                .input('newNs', sql.Date, data.ngaySinh)
+                .input('newGt', sql.NVarChar, data.gioiTinh)
+                .input('newSdt', sql.VarChar, data.sdt || null)
+                .input('newEmail', sql.VarChar, data.email || null)
+                .input('newNoisinh', sql.NVarChar, data.noiSinh || null)
+                .input('newCccd', sql.VarChar, data.cccd || null)
+                .input('newQue', sql.NVarChar, data.queQuan || null)
+                .input('newDantoc', sql.NVarChar, data.danToc || null)
+                .input('newTongiao', sql.NVarChar, data.tonGiao || null)
+                .input('newQuoctich', sql.NVarChar, data.quocTich || null)
+                .input('newHocvan', sql.NVarChar, data.trinhDoHocVan || null)
+                .input('newNghe', sql.NVarChar, data.nghe || null)
+                .input('newNoilamviec', sql.NVarChar, data.noiLamViec || null)
+                .input('newTt', sql.NVarChar, data.diaChiThuongTru || null)
+                .query(`
+                    INSERT INTO NHANKHAU (
+                        HOTEN, NGAYSINH, GIOITINH, SODIENTHOAI, EMAIL, NOISINH, 
+                        SOCCCD, NGUYENQUAN, DANTOC, TONGIAO, QUOCTICH, 
+                        TRINHDOHOCVAN, NGHENGHIEP, NOILAMVIEC, NOITHUONGTRU
+                    ) 
+                    OUTPUT INSERTED.ID 
+                    VALUES (
+                        @newHoTen, 
+                        @newNs, 
+                        @newGt, 
+                        @newSdt, 
+                        @newEmail,
+                        @newNoisinh,
+                        @newCccd, 
+                        @newQue, 
+                        @newDantoc, 
+                        @newTongiao, 
+                        @newQuoctich,
+                        @newHocvan, 
+                        @newNghe, 
+                        @newNoilamviec, 
+                        @newTt
+                    )
+                `);
+            nkId = nkRes.recordset[0].ID;
+        }
+
+        // ================== B3: XỬ LÝ TẠM TRÚ ==================
+        if (data.id && data.id !== 'null' && data.id.startsWith('TT')) {
+            // Update
             const ttId = parseInt(data.id.replace('TT', ''));
             await reqT
                 .input('ttId', sql.Int, ttId)
                 .input('noiTamTru', sql.NVarChar, data.noiTamTru)
                 .input('ngayDk', sql.Date, data.ngayDangKy)
-                .input('thoiHan', sql.Date, data.denNgay) // Lưu ý: Database của bạn dùng DENNGAY (Date), cần tính toán từ thời hạn
-                .query(`UPDATE TAMTRU SET NOIOHIENTAI=@noiTamTru, TUNGAY=@ngayDk, DENNGAY=@thoiHan WHERE ID=@ttId`);
+                // Lưu ý: data.denNgay từ frontend gửi lên phải là dạng 'YYYY-MM-DD'
+                .input('denNgay', sql.Date, data.denNgay || null) 
+                .query(`UPDATE TAMTRU SET NOIOHIENTAI=@noiTamTru, TUNGAY=@ngayDk, DENNGAY=@denNgay WHERE ID=@ttId`);
         } else {
-            // Insert Tạm trú
+            // Insert
             await reqT
                 .input('newNkId', sql.Int, nkId)
                 .input('newNoiTamTru', sql.NVarChar, data.noiTamTru)
                 .input('newNgayDk', sql.Date, data.ngayDangKy)
-                // Giả sử hạn mặc định 6 tháng nếu không chọn
-                .query(`INSERT INTO TAMTRU (IDNHANKHAU, NOIOHIENTAI, TUNGAY) VALUES (@newNkId, @newNoiTamTru, @newNgayDk)`);
+                .input('newDenNgay', sql.Date,  data.denNgay || null)
+                .query(`INSERT INTO TAMTRU (IDNHANKHAU, NOIOHIENTAI, TUNGAY, DENNGAY) VALUES (@newNkId, @newNoiTamTru, @newNgayDk, @newDenNgay)`);
         }
 
         await transaction.commit();
-        res.json({ success: true });
+        res.json({ success: true, message: "Lưu thành công!" });
+
     } catch (err) {
         if (transaction) await transaction.rollback();
-        res.status(500).json({ error: err.message });
+        console.error("Lỗi API Tạm trú:", err); // Log lỗi ra console để dễ debug
+        res.status(500).json({ error: err.message, detail: err });
     }
 });
 
@@ -422,13 +522,36 @@ app.post('/api/absent-residents', async (req, res) => {
     try {
         const pool = await connectDB();
 
-        // Cần tìm ID nhân khẩu thật dựa trên mã hiển thị (NK001 -> 1) hoặc tên/cccd
+        // Lấy ID nhân khẩu thực từ frontend
         let nkId = null;
-        if (data.nhanKhauId && data.nhanKhauId.startsWith('NK')) {
+        if (data.nhanKhauId && !isNaN(data.nhanKhauId)) {
+            nkId = parseInt(data.nhanKhauId);
+        } else if (data.nhanKhauId && data.nhanKhauId.startsWith('NK')) {
             nkId = parseInt(data.nhanKhauId.replace('NK', ''));
         }
 
         if (!nkId) return res.status(400).json({ success: false, message: "Cần chọn nhân khẩu chính xác" });
+
+        // Parse thời hạn để tính DENNGAY (optional - nếu có format "X tháng" hoặc "Y năm")
+        let denNgay = null;
+        if (data.thoiHanTamVang) {
+            const tungay = data.ngayDangKy ? new Date(data.ngayDangKy) : new Date();
+            const duration = data.thoiHanTamVang.toLowerCase();
+
+            if (duration.includes('tháng')) {
+                const months = parseInt(duration.match(/\d+/)?.[0] || 6);
+                denNgay = new Date(tungay);
+                denNgay.setMonth(denNgay.getMonth() + months);
+            } else if (duration.includes('năm')) {
+                const years = parseInt(duration.match(/\d+/)?.[0] || 1);
+                denNgay = new Date(tungay);
+                denNgay.setFullYear(denNgay.getFullYear() + years);
+            } else {
+                // Default: 6 months
+                denNgay = new Date(tungay);
+                denNgay.setMonth(denNgay.getMonth() + 6);
+            }
+        }
 
         if (data.id && data.id.startsWith('TV')) {
             // Update
@@ -436,18 +559,33 @@ app.post('/api/absent-residents', async (req, res) => {
             await pool.request()
                 .input('id', sql.Int, tvId)
                 .input('noiDen', sql.NVarChar, data.noiChuyenDen)
-                .input('ngayDi', sql.Date, data.ngayDangKy)
-                .query(`UPDATE TAMVANG SET NOITAMTRU=@noiDen, TUNGAY=@ngayDi WHERE ID=@id`);
+                .input('ngayDk', sql.Date, data.ngayDangKy || new Date())
+                .input('denNgay', sql.Date, denNgay)
+                .query(`UPDATE TAMVANG SET 
+                    NOITAMTRU=@noiDen, 
+                    TUNGAY=@ngayDk,
+                    DENNGAY=@denNgay
+                    WHERE ID=@id`);
         } else {
-            // Insert
-            await pool.request()
+            // Insert - Use GETDATE() if no registration date provided
+            const insertQuery = data.ngayDangKy
+                ? `INSERT INTO TAMVANG (IDNHANKHAU, NOITAMTRU, TUNGAY, DENNGAY) VALUES (@nkId, @noiDen, @ngayDk, @denNgay)`
+                : `INSERT INTO TAMVANG (IDNHANKHAU, NOITAMTRU, TUNGAY, DENNGAY) VALUES (@nkId, @noiDen, GETDATE(), @denNgay)`;
+
+            const request = pool.request()
                 .input('nkId', sql.Int, nkId)
                 .input('noiDen', sql.NVarChar, data.noiChuyenDen)
-                .input('ngayDi', sql.Date, data.ngayDangKy)
-                .query(`INSERT INTO TAMVANG (IDNHANKHAU, NOITAMTRU, TUNGAY) VALUES (@nkId, @noiDen, @ngayDi)`);
+                .input('denNgay', sql.Date, denNgay);
+
+            if (data.ngayDangKy) {
+                request.input('ngayDk', sql.Date, data.ngayDangKy);
+            }
+
+            await request.query(insertQuery);
         }
         res.json({ success: true });
     } catch (err) {
+        console.error('Error saving absent resident:', err);
         res.status(500).json({ error: err.message });
     }
 });

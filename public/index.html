@@ -31,13 +31,15 @@
         <!-- Sửa: Xóa Trang chủ, đặt Hộ khẩu là active mặc định -->
         <div class="nav-item active" data-section="households">🏠 Hộ khẩu</div>
         <div class="nav-item" data-section="residents">👪 Nhân khẩu</div>
+        <div class="nav-item" data-section="stats">📊 Thống kê</div>
+        <div class="nav-item" data-section="rewards">🎁 Phần thưởng</div>
         <div class="nav-item" data-section="residence" id="residenceMain">📋 Đăng ký tạm trú / tạm vắng</div>
+
         <div class="nav-sub" id="residenceSub">
           <div class="nav-item" data-section="residence_temp">➕ Danh sách tạm trú</div>
           <div class="nav-item" data-section="residence_absent">➖ Danh sách tạm vắng</div>
         </div>
-        <div class="nav-item" data-section="stats">📊 Thống kê</div>
-        <div class="nav-item" data-section="rewards">🎁 Phần thưởng</div>
+        
 
         <div class="sidebar-bottom"><button class="btn-outline" id="logoutBtn">Đăng xuất</button></div>
       </aside>
@@ -59,7 +61,7 @@
         <header class="main-header" id="mainHeader">
           <h1 id="headerTitle">Quản lý hộ khẩu</h1>
           <div id="headerActions">
-            <!-- Các nút hành động (ví dụ: Thêm) và thanh tìm kiếm sẽ được chuyển vào đây -->
+            <!-- Các nút Thao tác (ví dụ: Thêm) và thanh tìm kiếm sẽ được chuyển vào đây -->
           </div>
         </header>
 
@@ -74,8 +76,8 @@
                   <th>STT</th> <!-- Sửa lỗi 5 -->
                   <th>Mã hộ khẩu</th>
                   <th>Chủ hộ</th>
-                  <th>Số nhân khẩu</th>
-                  <th>Thao tác</th>
+                  <th style="width : 200px">Số nhân khẩu</th>
+                  <th style="width : 330px">Thao tác</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -107,10 +109,9 @@
                   <th>Họ và tên</th>
                   <th>Ngày sinh</th>
                   <th>Giới tính</th>
-                  <th>Số CCCD</th>
-                  <!-- Sửa lỗi 6: Cập nhật cột -->
                   <th>Quê quán</th>
-                  <th>Hành động</th>
+                  <th>Thời hạn tạm trú</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -129,7 +130,7 @@
                   <th>Số CCCD</th>
                   <th>Nơi chuyển đến</th>
                   <!-- Sửa lỗi 7: Bỏ cột thời hạn -->
-                  <th>Hành động</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody></tbody>

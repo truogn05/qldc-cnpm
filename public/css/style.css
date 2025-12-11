@@ -112,7 +112,7 @@ body{
 
 /* Sidebar */
 .sidebar{
-  width:240px;
+  width:260px;
   background:linear-gradient(180deg,#0a74bb,#0d8bd1);
   color:white;
   padding:25px 20px;
@@ -156,6 +156,7 @@ body{
   padding: 10px 15px;
   border-radius: 6px;
   font-size: 15px;
+  justify-content: center;
 }
 .nav-sub .nav-item:hover {
   background: rgba(255,255,255,0.25);
@@ -361,7 +362,8 @@ table.history-table th { background: #f9f9f9; top: 0; }
 }
 .book-section {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
+  border-top: 6px solid #0d8bd1;
   padding: 20px;
   margin-bottom: 20px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.07);
@@ -551,4 +553,74 @@ table.history-table th { background: #f9f9f9; top: 0; }
   padding: 0 5px;
   font-weight: 600;
   font-size: 14px;
+}
+
+.search-container {
+  position: relative;
+  margin-bottom: 20px;
+}
+.search-results {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 0 0 6px 6px;
+  margin-top: 0;
+  display: none;
+  background: white;
+  position: absolute;
+  z-index: 1000;
+  width: 100%;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.search-result-item {
+  padding: 12px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.1s;
+}
+.search-result-item:hover {
+  background-color: #e9f5fb;
+  color: #0a74bb;
+}
+.search-result-item strong {
+  display: block;
+  margin-bottom: 2px;
+}
+.search-result-item small {
+  color: #666;
+  font-size: 13px;
+}
+
+/* Thông tin người được chọn */
+.resident-info-display {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #0a74bb;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+.info-field {
+  font-size: 14px;
+}
+.info-field label {
+  font-weight: 600;
+  color: #555;
+  margin-right: 5px;
+}
+.section-divider {
+  border-top: 1px dashed #ccc;
+  margin: 20px 0 15px 0;
+  padding-top: 15px;
+}
+.section-divider h4 {
+  color: #e74c3c; /* Màu đỏ nổi bật cho phần tạm vắng */
+  margin: 0;
+  font-size: 16px;
+  text-transform: uppercase;
 }

@@ -1,0 +1,7 @@
+absentform lỗi: đã sửa 
+
+18/12/2025:
+Đã sửa lại và hoàn thiện api resident, temp, absent ( sau vẫn cần bổ sung lịch sử)
+thêm sweet alert
+
+

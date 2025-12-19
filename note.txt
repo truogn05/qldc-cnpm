@@ -1,7 +1,16 @@
-absentform lỗi: đã sửa 
+# Việc cần làm:
 
-18/12/2025:
-Đã sửa lại và hoàn thiện api resident, temp, absent ( sau vẫn cần bổ sung lịch sử)
-thêm sweet alert
+- [] sửa lại household
+- [] làm phần thưởng
+- [] thêm phần khai tử
+- [] showMoveResidentForm không xài đc đâu nhé
+## Đã hoàn thành:
+  1. absentform lỗi: đã sửa 
 
-
+- 18/12/2025:
+- Đã sửa và hoàn thiện API:
+  - resident
+  - temp
+  - absent  
+  *(sau vẫn cần bổ sung lịch sử thay đổi)*
+- Thêm SweetAlert

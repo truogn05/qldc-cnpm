@@ -164,9 +164,18 @@ app.post('/api/households', async (req, res) => {
     const { chuHo, diaChi, ngayLapSo } = req.body;
     const diaChiStr = `${diaChi.soNha}, ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.tinh}`;
 
+    const isEdit = id!==null;
     const transaction = new sql.Transaction(await connectDB());
     try {
         await transaction.begin();
+        if(isEdit){
+            //nếu chỉ là sửa thông tin của hộ -> update
+
+
+        }
+        else{
+            //nếu là tạo hk => 
+        }
         const reqT = new sql.Request(transaction);
 
         // Tạo Chủ Hộ
@@ -226,9 +235,10 @@ app.post('/api/residents', async (req, res) => {
         await transaction.begin();
         const pool = new sql.Request(transaction);
         //const pool = await connectDB();
-        // Nếu là thêm mới vào hộ
+        // Nếu là thêm mới 
         if (!data.id) {//nếu id == null -> chưa có -> thêm
             const result = await pool
+                //.input('hk', sql.Int, data.hk)//hộ khẩu
                 .input('hoten', sql.NVarChar, data.ten)
                 .input('ngaysinh', sql.Date, data.ngaySinh)
                 .input('gioitinh', sql.NVarChar, data.gioiTinh)
@@ -264,7 +274,15 @@ app.post('/api/residents', async (req, res) => {
                         @queQuan, @trinhdohocvan, @nghe,
                         @noilamviec, @noiohientai);
 
-                    
+                    DECLARE @idNhanKhau INT;
+                    SET @idNhanKhau = SCOPE_IDENTITY();
+
+                    IF (@hk IS NOT NULL)
+                    BEGIN
+                        INSERT INTO THANHVIENCUAHO (IDNHANKHAU, IDHOKHAU, QUANHEVOICHUHO, DIACHITRUOCKHICHUYENDEN)
+                        VALUES
+                            (@idNhanKhau, @hk, )
+                    END
                     
                     COMMIT TRANSACTION;
                     `);
@@ -272,8 +290,7 @@ app.post('/api/residents', async (req, res) => {
 
 
         } else {
-            // Logic Update (Cần parse ID string 'NK001' -> 1)
-            //const idInt = parseInt(data.id.replace('NK', ''));
+            //đã có id -> TH sửa thông tin
             await pool
                 .input('id', sql.Int, data.id)
                 .input('hoten', sql.NVarChar, data.ten)
@@ -299,7 +316,11 @@ app.post('/api/residents', async (req, res) => {
 
                     -- 1. Lấy CCCD cũ của nhân khẩu
                     DECLARE @oldCCCD NVARCHAR(50);
-                    SELECT @oldCCCD = SOCCCD FROM NHANKHAU WHERE ID = @id;
+                    SELECT 
+                        @oldCCCD = SOCCCD 
+                    FROM NHANKHAU 
+                    WHERE 
+                        ID = @id;
                     
                     -- 3. Kiểm tra CCCD mới đã tồn tại hay chưa
                     IF EXISTS (SELECT 1 FROM CANCUOCCONGDAN WHERE SOCCCD = @cccd)

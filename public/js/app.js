@@ -350,26 +350,28 @@ function renderHouseholds(list = households) {
       <td>${h.chuHo}</td>
       <td>${h.nhanKhau ? h.nhanKhau.length : 0}</td>
       <td >
-        <button class='btn small primary' onclick='showHouseholdBookDetail("${h.id}")'>Chi tiết</button>
-        <button class='btn small success' onclick='showHouseholdForm("${h.id}")'>Sửa</button>
+        <button class='btn small primary' onclick='showHouseholdBookDetail(${h.realId})'>Chi tiết</button>
+        <button class='btn small success' onclick='showHouseholdForm(${h.realId})'>Sửa</button>
         <button class='btn small' style="background-color: #f39c12; color: white;" onclick='showSplitHouseholdForm("${h.id}")'>Tách hộ</button>
-        <button class='btn small danger' onclick='deleteHousehold("${h.id}")'>Xóa</button>
-      </td>`;
+        
+      </td>`;//<button class='btn small danger' onclick='deleteHousehold("${h.id}")'>Xóa</button>
     tb.appendChild(tr);
   });
 }
 
-function showHouseholdBookDetail(id) {
-  const h = households.find(x => x.id === id);
-  if (!h) return;
+function showHouseholdBookDetail(realId) {
+  const h = households.find(x => x.realId === realId);
+  if (!h){
+    return;
+  }
 
   const membersHtml = (h.nhanKhau || []).map(nk => `
     <div class="book-member-card">
       <div style="display: flex; justify-content: space-between; align-items: flex-start;">
         <h4>${nk.ten} (${nk.vaiTro})</h4>
         <div>
-          <button class="btn small success" onclick="showResidentForm('${h.id}', '${nk.id}')">Sửa</button>
-          <button class="btn small danger" onclick="showMoveResidentForm('${h.id}', '${nk.id}')">Chuyển/Xóa</button>
+          <button class="btn small success" onclick="showResidentForm(${nk.nkID})">Sửa</button>
+          <button class="btn small danger" onclick="showMoveResidentForm(${h.realId}, ${nk.nkID})">Chuyển/Xóa</button>
         </div>
       </div>
       <div class="info-vertical-list">
@@ -422,20 +424,20 @@ function showHouseholdBookDetail(id) {
     
     <div class="form-actions">
       <button class="btn success" onclick='showHouseholdForm("${h.id}")'>Chỉnh sửa thông tin hộ</button>
-      <button class="btn primary" onclick='showResidentForm("${h.id}", null)'>Thêm nhân khẩu mới</button>
+      <button class="btn primary" onclick='showResidentForm( null, ${h.realId})'>Thêm nhân khẩu mới</button>
     </div>
   `;
   showDetailView(`Sổ hộ khẩu: ${h.id}`, contentHtml);
 }
 
 function showHouseholdForm(id = null) {
-  const isEdit = id !== null;
+  const isEdit = id !== null; // có id => là sửa
   const h = isEdit ? households.find(x => x.id === id) : {  diaChi: {} };
   const ch = isEdit ? residents.find(x => x.ten === h.chuHo) : null;
   const title = isEdit ? "Chỉnh sửa thông tin hộ khẩu" : "Thêm hộ khẩu mới";
 
   const contentHtml = `
-    <div class="form-group"><label>Tên chủ hộ:</label><input type="text" id="formChuHo" value="${h.chuHo || ''}"></div>
+    <div class="form-group"><label>Tên chủ hộ:</label><input type="text" id="formChuHo" value="${h?.chuHo || ''}"></div>
     <div class="form-group"><label>Số CCCD của chủ hộ</label><input type="text" id="formCCCD" value="${ ch?.cccd || ''}"></div>
     <div class="form-grid-2">
       <div class="form-group"><label>Ngày lập sổ:</label><input type="date" id="formNgayLapSo" value="${h.ngayLapSo || ''}"></div>
@@ -448,7 +450,7 @@ function showHouseholdForm(id = null) {
       <div class="form-group"><label>Tỉnh/TP:</label><input type="text" id="formTinh" value="${h.diaChi.tinh || ''}"></div>
     </div>
     <div class="form-actions">
-        <button class="btn success" onclick="saveHousehold('${id}')">Lưu</button>
+        <button class="btn success" onclick="saveHousehold('${h.realId}')">Lưu</button>
         <button class="btn" onclick="cancelForm()">Hủy</button>
     </div>
   `;//thêm ngày đăng ký new Date().toISOString().split('T')[0]
@@ -471,21 +473,24 @@ async function saveHousehold(id) {
   };
 
   if (!data.chuHo) return alert("Nhập tên chủ hộ!");
-
-  const res = await ApiService.saveHousehold(data);
-  if (res.success) {
-    Saved(res.message);
-    //alert("Lưu thành công!");
-    loadData();
-    backDetailView();
-  } else {
-    fireError(res.message);
-    //alert("Có lỗi xảy ra: " + (res.message || ""));
+  if(await confirmm(id?"Lưu thay đổi?" : "Tạo hộ khẩu mới?")){
+    const res = await ApiService.saveHousehold(data);
+    
+    if (res.success) {
+      Saved(res.message);
+      //alert("Lưu thành công!");
+      loadData();
+      backDetailView();
+    } else {
+      fireError(res.message);
+      //alert("Có lỗi xảy ra: " + (res.message || ""));
+    }
   }
+  
 }
 
 async function deleteHousehold(id) {
-  if ( await confirmm("Xóa hộ khẩu này?" , "Tất cả nhân khẩu sẽ bị xóa!")) {
+  if ( await confirmm("Xóa hộ khẩu này?" , "Tất cả nhân khẩu sẽ bị xóa!", "warning")) {
     const res = await ApiService.deleteHousehold(id);
     if(res.success){
       Saved(res.message);
@@ -660,7 +665,7 @@ function showResidentDetail(id) {
   showDetailView("Chi tiết nhân khẩu", contentHtml);
 }
 
-function showResidentForm( nkId = null) {
+function showResidentForm( nkId = null, hk = null) {
   const isEdit = nkId !== null;//có nkid thì là edit
   let r = {};
   if (isEdit) r = residents.find(x => x.nkID === nkId) || {};
@@ -697,7 +702,7 @@ function showResidentForm( nkId = null) {
     <div class="form-group full-width"><label>Nơi ở hiện tại:<span style="color:red">*</span></label><input id="nk_noht" value="${r.noiOHienTai || ''}"  ${r.noiOHienTai ? 'readonly class="readonly-field"' : ''}></div>
     
     <div class="form-actions">
-      <button class="btn success" onclick="saveResident(${nkId})">Lưu</button>
+      <button class="btn success" onclick="saveResident(${nkId}, ${hk})">Lưu</button>
       <button class="btn" onclick="cancelForm()">Hủy</button>
     </div>
     `;
@@ -705,9 +710,11 @@ function showResidentForm( nkId = null) {
   if (r.gioiTinh) document.getElementById('nk_gt').value = r.gioiTinh;
 }
 
-async function saveResident( nkId) {
+async function saveResident( nkId, hk = null) {
   const data = {
     id:               nkId !== 'null' ? nkId : null,
+    hk:               hk !== null ? hk : null,
+    //quanHeVoiChuHo:   document.getElementById('nk_qhvch').value.trim() || null,
     ten:              document.getElementById('nk_ten').value.trim(),
     ngaySinh:         document.getElementById('nk_ns').value,
     gioiTinh:         document.getElementById('nk_gt').value,
@@ -1298,6 +1305,7 @@ function showDetailView(title, contentHtml, isForm = false) {
   detailViewTitle.textContent = title;
   detailViewContent.innerHTML = contentHtml;
   detailView.style.display = "flex";
+  detailViewContent.scrollTop = 0;
   isDetailDirty = false;
 
   if (isForm) {
@@ -1373,11 +1381,11 @@ function Saved(str = null){
   });
 }
 
-async function confirmm(str, message = null){
+async function confirmm(str, message = null, icon = null){
   const result = await Swal.fire({
     title: str,
     text: message,
-    icon: "question",
+    icon: icon || "question",
     showCancelButton: true,
     confirmButtonColor: "#3085d6",
     cancelButtonColor: "#d33",

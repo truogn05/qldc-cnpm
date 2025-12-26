@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const { connectDB, sql } = require('./config/db');
+const { error } = require('console');
 
 const app = express();
 const PORT = 3000;
@@ -13,14 +14,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // === HELPER: Parse địa chỉ ===
 function parseDiaChi(diaChiStr) {
-    if (!diaChiStr) return { soNha: "", duong: "", phuong: "", quan: "", tinh: "" };
+    if (!diaChiStr) return { soNha: "",ngo: "", duong: "", phuong: "", quan: "", tinh: "" };
     const parts = diaChiStr.split(',').map(s => s.trim());
     return {
         soNha: parts[0] || "",
-        duong: parts[1] || "",
-        phuong: parts[2] || "",
-        quan: parts[3] || "",
-        tinh: parts[4] || ""
+        ngo: parts[1] ||"",
+        duong: parts[2] || "",
+        phuong: parts[3] || "",
+        quan: parts[4] || "",
+        tinh: parts[5] || ""
     };
 }
 
@@ -57,6 +59,7 @@ app.get('/api/households', async (req, res) => {
                 hk.ID, 
                 'HK' + RIGHT('000' + CAST(hk.ID AS VARCHAR(10)), 3) as maHoKhau,
                 nk.HOTEN as chuHo,
+                hk.IDCHUHO as idCH,
                 hk.DIACHI as diaChiFull,
                 FORMAT(hk.NGAYLAP, 'yyyy-MM-dd') as ngayLapSo
             FROM HOKHAU hk
@@ -94,12 +97,20 @@ app.get('/api/households', async (req, res) => {
             FROM THANHVIENCUAHO tv
             JOIN NHANKHAU nk ON tv.IDNHANKHAU = nk.ID
             LEFT JOIN CANCUOCCONGDAN cc ON nk.SOCCCD = cc.SOCCCD
+            ORDER BY 
+                CASE 
+                WHEN tv.QUANHEVOICHUHO = N'Chủ hộ' THEN 0 
+                WHEN tv.QUANHEVOICHUHO IN (N'Vợ', N'Chổng') THEN 1
+                ELSE 2
+            END,
+            nk.ID;
         `);
 
         const households = hkRes.recordset.map(hk => ({
             id: hk.maHoKhau,
             realId: hk.ID,
             chuHo: hk.chuHo,
+            idCH: hk.idCH,
             diaChi: parseDiaChi(hk.diaChiFull),
             ngayLapSo: hk.ngayLapSo,
             // Vẫn trả về nhanKhau để file app.js cũ hoạt động (logic renderHouseholds đang dùng h.nhanKhau.length)
@@ -161,12 +172,13 @@ app.get('/api/residents', async (req, res) => {
 
 // 4. THÊM HỘ KHẨU MỚI
 app.post('/api/households', async (req, res) => {
-    const { chuHo, diaChi, ngayLapSo } = req.body;
-    const diaChiStr = `${diaChi.soNha}, ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.tinh}`;
+    const { id, chuHo, diaChi, ngayLapSo } = req.body;
+    const diaChiStr = `${diaChi.soNha}, ${diaChi.ngo}, ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.tinh}`;
 
     const isEdit = id!==null;
     const transaction = new sql.Transaction(await connectDB());
     try {
+        throw new error ;
         await transaction.begin();
         if(isEdit){
             //nếu chỉ là sửa thông tin của hộ -> update
@@ -849,6 +861,437 @@ app.delete('/api/absent-residents/:id', async (req, res) => {
 });
 
 
+app.get("/api/rewards", async (req, res) => {
+  try {
+    const pool = await connectDB();
+    const result = await pool
+                        .request()
+                        .query(`
+                            SELECT 
+                                d.ID as id,
+                                d.TEN_DOT AS ten,
+                                d.LOAI AS loai,
+                                t.DON_GIA as donGia,
+                                FORMAT(d.NGAYTAO, 'yyyy-MM-dd') AS ngayTao ,
+                                ISNULL(SUM(t.TONG_TIEN), 0) AS tongGT,
+                                d.GHI_CHU as ghiChu
+                            FROM DOTTHUONG d
+                            LEFT JOIN (
+                                SELECT ID_DOT, TONG_TIEN, DON_GIA FROM THUONGLE
+                                UNION ALL
+                                SELECT ID_DOT, TONG_TIEN, DON_GIA FROM THUONGHOCTAP
+                            ) t ON d.ID = t.ID_DOT
+                            GROUP BY d.ID, d.TEN_DOT, d.LOAI, t.DON_GIA, d.NGAYTAO, d.GHI_CHU
+                            ORDER BY d.NGAYTAO DESC
+                            `
+                        );
+    const data = result.recordset
+    // console.log(data);
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json([]);
+  }
+});
+
+// app.post("/api/rewards", async (req, res) => {
+//   const { tenDot, loai, ngayTao, ghiChu } = req.body;
+
+//   if (!tenDot || !loai) {
+//     return res.json({ success: false, message: "Thiếu dữ liệu" });
+//   }
+
+//   try {
+//     const pool = await connectDB();
+
+//     const result = await pool.request()
+//       .input("ten", sql.NVarChar, tenDot)
+//       .input("loai", sql.NVarChar, loai)
+//       .input("ngayTao", sql.NVarChar, ngayTao)
+//       .input("ghichu", sql.NVarChar, ghiChu || null)
+//       .query(`
+//         INSERT INTO DOTTHUONG (TEN_DOT, LOAI, NGAYTAO, GHI_CHU)
+//         OUTPUT INSERTED.ID
+//         VALUES (@ten, @loai,@ngayTao, @ghichu)
+//       `);
+
+//     res.json({ id: result.recordset[0].ID, success: true , message: "Tạo đợt thưởng mới thành công"});
+//   } catch (err) {
+//     console.error(err);
+//     res.json({ success: false });
+//   }
+// });
+app.put("/api/rewards", async (req, res) => {
+    const data = req.body;
+
+    try{
+        const pool = await connectDB();
+
+        const result = await pool.request()
+        .input("id", sql.Int, data.id)
+        .input("ten", sql.NVarChar, data.ten)
+        .input("donGia", sql.Int, data.donGia)
+        .query(`
+            UPDATE DOTTHUONG
+            SET
+                TEN_DOT = @ten
+            WHERE ID = @id
+
+            UPDATE THUONGLE
+            SET 
+                DON_GIA =@donGia
+            WHERE ID_DOT = @id
+
+            UPDATE THUONGHOCTAP
+            SET 
+                DON_GIA =@donGia
+            WHERE ID_DOT = @id
+
+        `);
+
+        res.json({ success: true, message: "Thay đổi thông tin thành công" });
+    }
+    catch(e){
+        res.json({ success: false });
+    }
+});
+app.post("/api/rewards", async (req, res) => {
+  //const { tenDot, loai, ngayTao, ghiChu } = req.body;
+  const data = req.body;
+  const transaction = new sql.Transaction(await connectDB());
+  if (!data.tenDot || !data.loai) {
+    
+    return res.json({ success: false, message: "Thiếu dữ liệu" });
+  }
+  if(data.loai =="LE" && !data.donGia) return res.json({ success: false, message: "Thiếu dữ liệu" });
+
+  try {
+    //const pool = await connectDB();
+    await transaction.begin();
+    const reqT = new sql.Request(transaction);
+    const result = await reqT
+      .input("ten", sql.NVarChar, data.tenDot)
+      .input("loai", sql.NVarChar, data.loai)
+      .input("ngayTao", sql.NVarChar, data.ngayTao)
+      .input("ghichu", sql.NVarChar, data.ghiChu || null)
+      .query(`
+        INSERT INTO DOTTHUONG (TEN_DOT, LOAI, NGAYTAO, GHI_CHU)
+        OUTPUT INSERTED.ID
+        VALUES (@ten, @loai,@ngayTao, @ghichu)
+      `);
+    if(data.loai=="LE"){
+        await reqT
+        .input("idDot", sql.Int, result.recordset[0].ID)
+        .input("donGia", sql.Int, data.donGia)
+        .query(`
+            INSERT INTO THUONGLE (ID_DOT, ID_HOKHAU, SO_PHAN_QUA, DON_GIA)
+
+            SELECT 
+                @idDot AS idDot,
+                HK.IDHOKHAU,
+                COUNT(*) AS soPhanQua,
+                @donGia
+            FROM NHANKHAU NK
+            JOIN THANHVIENCUAHO AS HK ON NK.ID = HK.IDNHANKHAU
+            WHERE DATEDIFF(YEAR, NK.NGAYSINH, GETDATE()) <= 18
+            GROUP BY HK.IDHOKHAU
+            
+        `);
+    }
+    else{
+        await reqT
+        .input("idDot", sql.Int, result.recordset[0].ID)
+        .query(`
+            INSERT INTO THUONGHOCTAP (ID_DOT, ID_HOCSINH)
+            SELECT 
+                @idDot,
+                hs.ID
+            FROM HOCSINH hs
+            `)
+    }
+    await transaction.commit();
+    //console.log(111111111);
+    res.json({ success: true , message: "Tạo đợt thưởng mới thành công"});
+  } catch (err) {
+    console.error(err);
+    //console.log(22222);
+    if (transaction) await transaction.rollback();
+    res.json({ success: false });
+  }
+});
+
+app.post("/api/rewards/:id/generate-le", async (req, res) => {
+  const idDot = req.params.id;
+  const DON_GIA = 50000; // có thể chỉnh
+
+  try {
+    const pool = await connectDB();
+
+    // Xóa nếu đã sinh trước đó (tránh trùng)
+    await pool.request()
+      .input("idDot", sql.Int, idDot)
+      .query(`DELETE FROM THUONGLE WHERE ID_DOT = @idDot`);
+
+    // Sinh mới theo hộ
+    await pool.request()
+      .input("idDot", sql.Int, idDot)
+      .input("donGia", sql.Int, DON_GIA)
+      .query(`
+        INSERT INTO THUONGLE (ID_DOT, ID_HOKHAU, SO_PHAN_QUA, DON_GIA)
+
+        SELECT 
+            @idDot AS idDot,
+            HK.IDHOKHAU,
+            COUNT(*) AS soPhanQua,
+            @donGia
+        FROM NHANKHAU NK
+        JOIN THANHVIENCUAHO AS HK ON NK.ID = HK.IDNHANKHAU
+        WHERE DATEDIFF(YEAR, NK.NGAYSINH, GETDATE()) <= 18
+        GROUP BY HK.IDHOKHAU
+        
+      `);
+
+    res.json({ success: true, message: "Đã tạo danh sách thưởng lễ" });
+  } catch (err) {
+    console.error("Lỗi khi tạo data cho thưởng lễ", err);
+    res.json({ success: false });
+  }
+});
+
+app.get("/api/rewards/:id/students", async (req, res) => {
+  try {
+    const pool = await connectDB();
+
+    const result = await pool.request().query(`
+      SELECT 
+        hs.ID AS id,
+        n.HOTEN as ten, 
+        hs.TRUONG as truong,
+      FROM HOCSINH hs
+      JOIN NHANKHAU n ON hs.IDNHANKHAU = n.ID
+      WHERE DATEDIFF(YEAR, n.NGAYSINH, GETDATE()) <= 18
+      ORDER BY n.HOTEN
+    `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.error(err);
+    res.json([]);
+  }
+});
+
+
+app.get("/api/rewards/:id/students", async (req, res) => {
+  try {
+    const pool = await connectDB();
+
+    const result = await pool.request().query(`
+      SELECT 
+        hs.ID AS idHS,
+        n.HOTEN AS ten,
+        hs.TRUONGHOC AS truongHoc,
+      FROM HOCSINH hs
+      JOIN NHANKHAU n ON hs.ID_NHANKHAU = n.ID
+      --WHERE DATEDIFF(YEAR, n.NGAYSINH, GETDATE()) <= 18
+      ORDER BY n.HOTEN
+    `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.error(err);
+    res.json([]);
+  }
+});
+
+app.get("/api/rewards/:id/total-le", async (req, res) => {
+  const idDot = req.params.id;
+
+  try {
+    const pool = await connectDB();
+
+    const result = await pool.request()
+      .input("idDot", sql.Int, idDot)
+      .query(`
+        SELECT 
+            ISNULL(SUM(TONG_TIEN), 0) AS tongTien,
+            ISNULL(COUNT(DISTINCT ID_HOKHAU), 0) AS tongHo,
+            ISNULL(SUM(SO_PHAN_QUA), 0) AS tongNg
+
+        FROM THUONGLE
+        WHERE ID_DOT = @idDot
+      `);
+    const total = result.recordset[0];
+    res.json({
+      success: true,
+      tongTien: total.tongTien,
+      tongHo: total.tongHo,
+      tongNg: total.tongNg
+    });
+  } catch (err) {
+    console.error("Lỗi khi tính tổng thưởng lễ",err);
+    res.json({ success: false });
+  }
+});
+
+app.get("/api/rewards/:id/total-hoctap", async (req, res) => {
+  const idDot = req.params.id;
+
+  try {
+    const pool = await connectDB();
+
+    const result = await pool.request()
+      .input("idDot", sql.Int, idDot)
+      .query(`
+        SELECT 
+            ISNULL(SUM(TONG_TIEN), 0) AS tongTien,
+            ISNULL(COUNT(DISTINCT ID_HOCSINH), 0) AS tongHS,
+            ISNULL(SUM(SO_VO), 0) AS tongVo,
+            ISNULL(SUM(CASE WHEN THANH_TICH = N'GIOI' THEN 1 ELSE 0 END), 0) AS soHS_Gioi,
+            ISNULL(SUM(CASE WHEN THANH_TICH = N'KHA' THEN 1 ELSE 0 END), 0) AS soHS_Kha,
+            ISNULL(SUM(CASE WHEN THANH_TICH = N'TB' THEN 1 ELSE 0 END), 0) AS soHS_TrungBinh
+
+        FROM THUONGHOCTAP
+        WHERE ID_DOT = @idDot
+      `);
+    const s = result.recordset[0];
+    res.json({
+      success: true,
+      tongTien: s.tongTien,
+      tongHS: s.tongHS,
+      tongVo: s.tongVo,
+      soHS_Gioi: s.soHS_Gioi,
+      soHS_Kha: s.soHS_Kha,
+      soHS_TrungBinh: s.soHS_TrungBinh
+    });
+  } catch (err) {
+    console.error("Lỗi khi tính tổng thưởng học tập",err);
+    res.json({ success: false , message: "Lỗi khi tính tổng thưởng học tập"});
+  }
+});
+
+app.get("/api/rewards/:id/detail-le", async (req, res) => {
+  const idDot = req.params.id;
+
+  try {
+    const pool = await connectDB();
+
+    const result = await pool.request()
+      .input("idDot", sql.Int, idDot)
+      .query(`
+        SELECT 
+            NK.HOTEN AS ten,
+            TL.SO_PHAN_QUA AS soPhanQua,
+            TL.TONG_TIEN AS tien
+
+        FROM THUONGLE TL
+        JOIN HOKHAU HK ON TL.ID_HOKHAU = HK.ID
+        JOIN NHANKHAU NK ON NK.ID = HK.IDCHUHO
+        WHERE TL.ID_DOT = @idDot
+      `);
+    const details = result.recordset;
+    
+    res.json(details);
+  } catch (err) {
+    console.error("Lỗi khi lấy danh sách thưởng lễ",err);
+    res.json({ success: false ,message: "Lỗi khi lấy danh sách thưởng lễ"});
+  }
+});
+
+app.get("/api/rewards/:id/detail-hoctap", async (req, res) => {
+  const idDot = req.params.id;
+
+  try {
+    const pool = await connectDB();
+
+    const result = await pool.request()
+      .input("idDot", sql.Int, idDot)
+      .query(`
+        SELECT 
+            HS.ID as id,
+            NK.HOTEN AS ten,
+            HS.TRUONGHOC AS truong,
+            HS.LOP AS lop,
+            THT.THANH_TICH as tt,
+            THT.SO_VO as soVo
+
+        FROM THUONGHOCTAP THT
+        JOIN HOCSINH HS ON THT.ID_HOCSINH = HS.ID
+        JOIN NHANKHAU NK ON NK.ID = HS.IDNHANKHAU
+        WHERE THT.ID_DOT = @idDot
+        order by 
+            CAST(
+                LEFT(HS.LOP, PATINDEX('%[^0-9]%', HS.LOP + 'X') - 1)
+                AS INT
+            ) ASC,
+            HS.LOP ASC
+      `);
+    const details = result.recordset;
+    
+    res.json(details);
+  } catch (err) {
+    console.error("Lỗi khi lấy danh sách thưởng học tập",err);
+    res.json({ success: false, message: "Lỗi khi lấy danh sách thưởng học tập"});
+  }
+});
+
+app.delete('/api/reward/:id', async (req, res) => {
+    const data = req.body;
+    const id = req.params.id;
+    try {
+        const pool = await connectDB();
+        
+        // Xóa trong bảng TAMTRU (Không xóa nhân khẩu để lưu hồ sơ)
+        await pool.request()
+                .input('id', sql.Int, id)
+                .query(`
+                    DELETE FROM THUONGLE WHERE ID_DOT = @id
+                    DELETE FROM THUONGHOCTAP WHERE ID_DOT = @id
+                    
+                    DELETE FROM DOTTHUONG WHERE ID = @id
+
+                    
+                    `);
+        res.json({ success: true, message: "Đã xoá đợt thưởng này" });
+    } catch (err) { 
+        
+        console.error("Lỗi API xoá Tạm trú:", err); // Log lỗi ra console để dễ debug
+        res.status(500).json({success: false, message: "Xoá đợt thưởng không thành công" }); }
+});
+
+app.post('/api/rewards/:id/changeThanhTich', async (req, res) => {
+    const data = req.body;
+    const idDot = req.params.id;
+    try {
+        const pool = await connectDB();
+        let soVo = 0; // Mặc định là TB hoặc khác
+        if (data.value === "GIOI") {
+            soVo = 10;
+        } else if (data.value === "KHA") {
+            soVo = 7;
+        } else if (data.value === "TB") {
+            soVo = 5;
+        }
+        // Xóa trong bảng TAMTRU (Không xóa nhân khẩu để lưu hồ sơ)
+        await pool.request()
+                .input('idDot', sql.Int, idDot)
+                .input('idHS', sql.Int, data.id)
+                .input('value', sql.NVarChar, data.value)
+                .input('soVo', sql.Int, soVo)
+                .query(`
+                    UPDATE THUONGHOCTAP
+                    SET
+                        THANH_TICH = @value,
+                        SO_VO = @soVo
+                    WHERE ID_DOT = @idDot AND ID_HOCSINH = @idHS
+
+                    `);
+        res.json({ success: true, message: "Cập nhật thành công" });
+        //console.log("Cập nhật thành công");
+    } catch (err) { 
+        
+        console.error("Lỗi API changeTT:", err); // Log lỗi ra console để dễ debug
+        res.status(500).json({success: false, message: "Thay đổi thành tích không thành công" }); }
+});
 // Serve Frontend
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

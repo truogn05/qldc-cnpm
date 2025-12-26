@@ -206,14 +206,25 @@ body{
   padding: 25px;
 }
 
-.section{display:none;animation:fadeIn .4s ease;}
-.section.active{display:block;}
+.section{
+  display:none;
+  animation:fadeIn .4s ease;
+}
+.section.active{
+  display:block;
+}
+.heavy-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 1200px;
+}
+
 .card{
   background:white;
   border-radius:10px;
   padding:15px 20px;
   box-shadow:0 5px 15px rgba(0,0,0,0.07);
   margin-bottom:20px;
+  
 }
 
 /* Bảng */
@@ -230,7 +241,7 @@ th,td{padding:12px 15px;border-bottom:1px solid #ddd;text-align:left;}
 
 /* --- CỐ ĐỊNH HEADER BẢNG (Yêu cầu 2) --- */
 th{
-  background:#f5f9fc; 
+  background:#ededed; 
   font-weight: 600;
   position: sticky; /* Dính */
   top: 0; /* Dính lên đầu */
@@ -631,4 +642,33 @@ table.history-table th { background: #f9f9f9; top: 0; }
     background-color: #e9ecef;
     opacity: 1; 
     pointer-events: none; /* người dùng không tương tác được */
+}
+
+.reward-info-display {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #0a74bb;
+}
+
+
+select {
+  padding: 3px 6px;
+  border-radius: 5px;
+  border: 1px solid #d9d9d9;
+  background-color: #fff;
+  color: #333;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease
+}
+select:hover {  
+  border-color: #041b2dcc;
+  
+}
+
+select:focus {  
+  border-color: #041b2d;
+  
 }

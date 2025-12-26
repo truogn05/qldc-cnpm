@@ -98,7 +98,93 @@ const ApiService = {
       const res = await fetch(`/api/absent-residents/${id}`, { method: 'DELETE' });
       return await res.json();
     } catch (e) { return { success: false }; }
+  },
+
+  getRewards: async() => {
+    try{
+      const res = await fetch("/api/rewards");
+      return await res.json();
+    }
+    catch (e) { return []; }
+  },
+  addReward: async (data) => {
+    try {
+      const res = await fetch('/api/rewards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      return await res.json();
+    } 
+    catch (e) { 
+      
+      return { success: false }; }
+  },
+  saveReward: async(data) =>{
+    try {
+      const res = await fetch('/api/rewards', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      return await res.json();
+    } 
+    catch (e) { 
+      
+      return { success: false }; }
+  },
+  deleteReward: async (id) => {
+    try {
+      const res = await fetch(`/api/reward/${id}`, { method: 'DELETE' });
+      return await res.json();
+    } 
+    catch (e) { return { success: false }; }
+  },
+
+  getTotalLe: async(id) => {
+    try{
+      const res = await fetch(`/api/rewards/${id}/total-le`);
+      return await res.json();
+    }
+    catch (e) { return []; }
+  },
+  getDetailLe: async(id) => {
+    try{
+      const res = await fetch(`/api/rewards/${id}/detail-le`);
+      return await res.json();
+    }
+    catch (e) { return []; }
+  },
+  getTotalHocTap: async(id) => {
+    try{
+      const res = await fetch(`/api/rewards/${id}/total-hoctap`);
+      return await res.json();
+    }
+    catch (e) { return []; }
+  },
+  getDetailHocTap: async(id) => {
+    try{
+      const res = await fetch(`/api/rewards/${id}/detail-hoctap`);
+      return await res.json();
+    }
+    catch (e) { return []; }
+  },
+  changeTT: async(data) =>{
+    const {idDot, id, value} = data;
+    try{
+      const res = await fetch(`/api/rewards/${idDot}/changeThanhTich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({id, value})
+      });
+      // const res = await fetch(`/api/rewards/${idDot}/changeThanhTich`);
+      return await res.json();
+    }
+    catch (e) { return { success: false }; }
   }
+
 };
 
 // ===== BIẾN TOÀN CỤC =====
@@ -110,9 +196,9 @@ let rewards = [];
 let currentSection = 'households';
 let isDetailDirty = false;
 let currentDraggedItem = null;
-
-const detailHistory = [];
-
+let login = 0;
+let detailHistory = [];
+let renderLai = 0;
 // ===== DOM ELEMENTS =====
 const loginPage = document.getElementById("loginPage");
 const app = document.getElementById("app");
@@ -122,12 +208,14 @@ const passwordInput = document.getElementById("password");
 const errorMsg = document.getElementById("errorMsg");
 const logoutBtn = document.getElementById("logoutBtn");
 
+const mainView = document.getElementsByClassName("main-content-area")
 const mainHeader = document.getElementById("mainHeader");
 const headerTitle = document.getElementById("headerTitle");
 const headerActions = document.getElementById("headerActions");
 const detailView = document.getElementById("detailView");
 const detailViewTitle = document.getElementById("detailViewTitle");
 const detailViewContent = document.getElementById("detailViewContent");
+
 const detailViewBackBtn = document.getElementById("detailViewBackBtn");
 const brandLogo = document.getElementById("brandLogo");
 
@@ -136,27 +224,42 @@ const confirmModalMessage = document.getElementById("confirmModalMessage");
 let confirmModalConfirm = document.getElementById("confirmModalConfirm");
 const confirmModalCancel = document.getElementById("confirmModalCancel");
 
+let householdHTML = '';
+let residentHTML = '';
+let tempHTML = '';
+let absentHTML = '';
+let rewardHTML = '';
 
 // ===== KHỞI TẠO DỮ LIỆU =====
 async function loadData() {
+  showLoading("Đang tải dữ liệu");
+  console.log("loadData");
   try {
-    const [hkData, ttData, tvData] = await Promise.all([
+    const [hkData, ttData, tvData, rwData] = await Promise.all([
       ApiService.getHouseholds(),
       ApiService.getTempResidents(),
-      ApiService.getAbsentResidents()
+      ApiService.getAbsentResidents(),
+      ApiService.getRewards()
     ]);
-
+    Saved("Tải dữ liệu thành công",1000);
     households = hkData || [];
     tempResidents = ttData || [];
     absentResidents = tvData || [];
-    rewards = [{ id: "R001", loai: "Trung thu 2025", giaTri: "300.000đ", chiTiet: [] }];
+    rewards = rwData || [];
 
     flattenResidents();
     isDetailDirty =false;
-    navigateTo(currentSection);
+    
+    
+    await delay(1000);
+    await forceNavigateTo(currentSection);
+    //navigateTo(currentSection);
+    
+    
+    
   } catch (err) {
     fireError("Không thể tải dữ liệu từ Server!");
-    //alert("Không thể tải dữ liệu từ Server!");
+    
     console.error(err);
   }
 }
@@ -200,14 +303,24 @@ loginBtn.onclick = async () => {
     const data = await res.json();
 
     if (data.success) {
+      console.log("đăng nhập")
+      Saved("Đăng nhập thành công", 1000);
+      await delay(1000);
+      
       loginPage.style.display = "none";
       app.style.display = "block";
-      loadData();
+      //showLoading("Đang tải dữ liệu")
+      await loadData();
+      //closeLoading();
+      //Saved("Tải dữ liệu thành công");
     } else {
-      errorMsg.textContent = data.message || "Đăng nhập thất bại";
+      fireError(data.message || "Đăng nhập thất bại");
+      //errorMsg.textContent = data.message || "Đăng nhập thất bại";
     }
   } catch (e) {
-    errorMsg.textContent = "Lỗi kết nối server";
+    fireError("Lỗi kết nối server");
+    console.error(e);
+    //errorMsg.textContent = "Lỗi kết nối server";
   }
 };
 logoutBtn.onclick = () => location.reload();
@@ -236,7 +349,9 @@ document.querySelectorAll(".nav-item").forEach(it => {
       document.getElementById("residenceMain").classList.add("active");
     }
 
-    if (sectionId) navigateTo(sectionId);
+    if (sectionId) setTimeout(() => {
+        navigateTo(sectionId);
+      }, 0);
   };
 });
 
@@ -246,30 +361,55 @@ function resetMenu() {
   document.getElementById("residenceMain").classList.remove("active");
 }
 
-function navigateTo(sectionId) {
+async function navigateTo(sectionId) {
   if (isDetailDirty) {
     showConfirmModal("Dữ liệu chưa lưu. Rời đi?", () => { isDetailDirty = false; forceNavigateTo(sectionId); });
     return;
   }
   forceNavigateTo(sectionId);
+  //mainView[0].scrollTo({ top: 0 });//, behavior: 'smooth'
 }
 
-function forceNavigateTo(sectionId) {
+async function forceNavigateTo(sectionId) {
+  // mainView.style.display = "flex";
+  // mainViewContent.scrollTop = 0;
+  if(sectionId == currentSection && login){
+    mainView[0].scrollTo({ top: 0 , behavior: 'smooth'});
+    return;
+  }
+  //showLoading();
+  login = 1;
+  console.log("forceNAV")
   hideDetailView();
+  updateHeader(sectionId);
+
   currentSection = sectionId;
+ 
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   const activeSection = document.getElementById(sectionId);
   if (activeSection) activeSection.classList.add("active");
-  updateHeader(sectionId);
-
+  //await delay(100);
+  
   switch (sectionId) {
-    case 'households': renderHouseholds(); break;
-    case 'residents': renderResidents(); break;
-    case 'residence_temp': renderTemp(); break;
-    case 'residence_absent': renderAbsent(); break;
-    case 'stats': updateStats('gender'); break;
-    case 'rewards': renderRewards(); break;
+    case 'households': await renderHouseholds(); break;
+    case 'residents': await renderResidents(); break;
+    case 'residence_temp': await renderTemp(); break;
+    case 'residence_absent':await renderAbsent(); break;
+    case 'stats':await updateStats('gender'); break;
+    case 'rewards':await renderRewards(); break;
   }
+  console.log("render xong");
+  //await delay(5000);
+
+  //closeLoading();
+  
+
+  mainView[0].scrollTo({ top: 0 });
+  
+}
+function delay(ms) {
+  console.log(ms);
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function updateHeader(sectionId) {
@@ -289,7 +429,7 @@ function updateHeader(sectionId) {
     actionsHtml = `<input type="text" id="searchAbsent" class="search-bar" placeholder="Tìm kiếm..."> `;//<button class="btn primary" id="addAbsentBtn">Thêm tạm vắng</button>
   } else if (sectionId === 'rewards') {
     title = "Quản lý phần thưởng";
-    actionsHtml = `<button class="btn primary" id="addRewardBtn">Thêm phần thưởng</button>`;
+    actionsHtml = `<button class="btn primary" id="addRewardBtn" onclick="showRewardForm()">Thêm đợt thưởng</button>`;
   } else if (sectionId === 'stats') {
     title = "Thống kê dân cư";
   }
@@ -335,31 +475,51 @@ function attachHeaderEvents(sectionId) {
 
 
 // ===== 1. LOGIC HỘ KHẨU =====
-function renderHouseholds(list = households) {
+async function renderHouseholds(list = households) {
+  console.log("render househouse");
+  
   const tb = document.querySelector("#householdTable tbody");
-  tb.innerHTML = "";
+  // tb.innerHTML = "";
   if (!list || list.length === 0) {
     tb.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Không có dữ liệu</td></tr>";
     return;
   }
+  if(householdHTML && list === households){
+    //tb.innerHTML = householdHTML;
+    //await delay(500);
+    return householdHTML;
+  }
+  showLoading();
+  let temp = '';
   list.forEach((h, index) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td>${h.id}</td>
-      <td>${h.chuHo}</td>
-      <td>${h.nhanKhau ? h.nhanKhau.length : 0}</td>
-      <td >
-        <button class='btn small primary' onclick='showHouseholdBookDetail(${h.realId})'>Chi tiết</button>
-        <button class='btn small success' onclick='showHouseholdForm(${h.realId})'>Sửa</button>
-        <button class='btn small' style="background-color: #f39c12; color: white;" onclick='showSplitHouseholdForm("${h.id}")'>Tách hộ</button>
-        
-      </td>`;//<button class='btn small danger' onclick='deleteHousehold("${h.id}")'>Xóa</button>
-    tb.appendChild(tr);
+    // const tr = document.createElement("tr");
+    // tr.innerHTML = `
+    temp +=`
+        <tr>
+          <td>${index + 1}</td>
+          <td>${h.id}</td>
+          <td>${h.chuHo}</td>
+          <td>${h.nhanKhau ? h.nhanKhau.length : 0}</td>
+          <td >
+            <button class='btn small primary' onclick='showHouseholdBookDetail(${h.realId})'>Chi tiết</button>
+            <button class='btn small success' onclick='showHouseholdForm(${h.realId})'>Sửa</button>
+            <button class='btn small' style="background-color: #f39c12; color: white;" onclick='showSplitHouseholdForm("${h.id}")'>Tách hộ</button>
+          </td>
+        </tr>`;//<button class='btn small danger' onclick='deleteHousehold("${h.id}")'>Xóa</button>
+    // tb.appendChild(tr);
   });
+  
+  // closeLoading();
+  await delay(300);
+  tb.innerHTML = temp;
+  if(!householdHTML) householdHTML = temp;
+  await delay(100);
+  closeLoading();
+  return householdHTML;
 }
 
 function showHouseholdBookDetail(realId) {
+  
   const h = households.find(x => x.realId === realId);
   if (!h){
     return;
@@ -393,7 +553,7 @@ function showHouseholdBookDetail(realId) {
         <div class="info-item-row"><label>Nghề nghiệp</label><span>${nk.nghe || 'N/A'}</span></div>
         <div class="info-item-row"><label>Nơi làm việc</label><span>${nk.noiLamViec || 'N/A'}</span></div>
         <div class="info-item-row"><label>Địa chỉ thường trú trước khi chuyển đến</label><span>${nk.diaChiTruoc || 'Mới sinh'}</span></div>
-        <div class="info-item-row"><label>Ngày đăng kí thường chú</label><span>${nk.ngayDangKyTT || ( formatDate(nk.ngaySinh)> h.ngayLapSo ? nk.ngaySinh : h.ngayLapSo)}</span></div>
+        <div class="info-item-row"><label>Ngày đăng kí thường chú</label><span>${ formatDate(new Date(nk.ngaySinh) > new Date(h.ngayLapSo)? nk.ngaySinh: h.ngayLapSo)}</span></div>
         
         <div class="info-item-row full-width"><label>Ghi chú</label><span>${nk.ghiChu || 'Không có'}</span></div>
       </div>
@@ -410,10 +570,11 @@ function showHouseholdBookDetail(realId) {
         <div class="info-item-row"><label>Chủ hộ</label><span>${h.chuHo}</span></div>
         <div class="info-item-row"><label>Ngày lập sổ</label><span>${formatDate(h.ngayLapSo)}</span></div>
         <div class="info-item-row"><label>Số nhà</label><span>${h.diaChi.soNha}</span></div>
-        <div class="info-item-row"><label>Đường/Phố</label><span>${h.diaChi.duong}</span></div>
+        <div class="info-item-row"><label>Ngõ/Đường</label><span>${h.diaChi.ngo}</span></div>
+        <div class="info-item-row"><label>Tổ dân Phố</label><span>${h.diaChi.duong}</span></div>
         <div class="info-item-row"><label>Phường/Xã</label><span>${h.diaChi.phuong}</span></div>
         <div class="info-item-row"><label>Quận/Huyện</label><span>${h.diaChi.quan}</span></div>
-        <div class="info-item-row full-width"><label>Tỉnh/Thành phố</label><span>${h.diaChi.tinh}</span></div>
+        <div class="info-item-row"><label>Tỉnh/Thành phố</label><span>${h.diaChi.tinh}</span></div>
       </div>
     </div>
     
@@ -433,17 +594,21 @@ function showHouseholdBookDetail(realId) {
 function showHouseholdForm(id = null) {
   const isEdit = id !== null; // có id => là sửa
   const h = isEdit ? households.find(x => x.id === id) : {  diaChi: {} };
-  const ch = isEdit ? residents.find(x => x.ten === h.chuHo) : null;
+  const ch = isEdit ? residents.find(x => x.id === h.idCH) : null;
   const title = isEdit ? "Chỉnh sửa thông tin hộ khẩu" : "Thêm hộ khẩu mới";
 
   const contentHtml = `
     <div class="form-group"><label>Tên chủ hộ:</label><input type="text" id="formChuHo" value="${h?.chuHo || ''}"></div>
     <div class="form-group"><label>Số CCCD của chủ hộ</label><input type="text" id="formCCCD" value="${ ch?.cccd || ''}"></div>
     <div class="form-grid-2">
-      <div class="form-group"><label>Ngày lập sổ:</label><input type="date" id="formNgayLapSo" value="${h.ngayLapSo || ''}"></div>
+      <div class="form-group"><label>Ngày lập sổ:</label><input type="date" id="formNgayLapSo" value="${h.ngayLapSo || new Date().toISOString().split('T')[0]}"  readonly class="readonly-field"></div>
       <div class="form-group"><label>Số nhà:</label><input type="text" id="formSoNha" value="${h.diaChi.soNha || ''}"></div>
     </div>
-    <div class="form-group"><label>Đường/Phố:</label><input type="text" id="formDuong" value="${h.diaChi.duong || ''}"></div>
+    <div class="form-grid-2">
+      <div class="form-group"><label>Ngõ/Đường:</label><input type="text" id="formNgo" value="${h.diaChi.ngo || ''}"></div>
+      <div class="form-group"><label>Tổ dân phố:</label><input type="text" id="formDuong" value="${h.diaChi.duong || ''}"></div>
+    </div>
+    
     <div class="form-grid-3">
       <div class="form-group"><label>Phường/Xã:</label><input type="text" id="formPhuong" value="${h.diaChi.phuong || ''}"></div>
       <div class="form-group"><label>Quận/Huyện:</label><input type="text" id="formQuan" value="${h.diaChi.quan || ''}"></div>
@@ -465,6 +630,7 @@ async function saveHousehold(id) {
     ngayLapSo: document.getElementById("formNgayLapSo").value,
     diaChi: {
       soNha: document.getElementById("formSoNha").value,
+      ngo: document.getElementById("formNgo").value,
       duong: document.getElementById("formDuong").value,
       phuong: document.getElementById("formPhuong").value,
       quan: document.getElementById("formQuan").value,
@@ -479,7 +645,8 @@ async function saveHousehold(id) {
     if (res.success) {
       Saved(res.message);
       //alert("Lưu thành công!");
-      loadData();
+      await loadData();
+      
       backDetailView();
     } else {
       fireError(res.message);
@@ -495,7 +662,8 @@ async function deleteHousehold(id) {
     if(res.success){
       Saved(res.message);
       //alert("Lưu thành công");
-      loadData();
+      await loadData();
+      householdHTML = '';
       backDetailView();
     }
     else{
@@ -566,7 +734,7 @@ async function saveSplitHousehold(oldId) {
   if (res.success) {
     Saved("Đã tách hộ mới thành công!");
     //alert("Đã tách hộ mới thành công!");
-    loadData();
+    await loadData();
     backDetailView();
   } else {
     fireError("Lỗi tách hộ!");
@@ -576,19 +744,28 @@ async function saveSplitHousehold(oldId) {
 
 
 // ===== 2. LOGIC NHÂN KHẨU =====
-function renderResidents(list = residents) {
+async function renderResidents(list = residents) {
   const tb = document.querySelector("#residentTable tbody");
-  tb.innerHTML = "";
+  // tb.innerHTML = "";
   
-
+  
   if (list.length === 0) {
     tb.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Không có dữ liệu</td></tr>";
     return;
   }
+  if(list == residents && residentHTML){
+    //tb.innerHTML = residentHTML;
+    //await delay(500);
+    return residentHTML;
+  }
+  showLoading();
+  let temp = "";
 
   list.forEach((p, index) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+    //const tr = document.createElement("tr");
+    // tr.innerHTML = `
+    temp +=`
+      <tr>
         <td>${index + 1}</td>
         <td>${p.ten}</td>
         <td>${formatDate(p.ngaySinh)}</td>
@@ -597,9 +774,19 @@ function renderResidents(list = residents) {
         <td>
           <button class='btn small primary' onclick='showResidentDetail(${p.nkID})'>Chi tiết</button>
         </td>
+      </tr>
     `;
-    tb.appendChild(tr);
+    //tb.appendChild(tr);
   });
+  await delay(500);
+  tb.innerHTML = temp;
+  if(!residentHTML) residentHTML = temp;
+  
+  await delay(500);
+  closeLoading();
+  //closeLoading();
+  return residentHTML;
+  
 }
 
 // CẬP NHẬT: Trang chi tiết nhân khẩu đầy đủ thông tin
@@ -676,7 +863,7 @@ function showResidentForm( nkId = null, hk = null) {
         <div class="form-group"><label>Họ tên:<span style="color:red">*</span></label><input id="nk_ten" value="${r.ten || ''}"></div>
         <div class="form-group"><label>Ngày sinh:<span style="color:red">*</span></label><input type="date" id="nk_ns" value="${r.ngaySinh || ''}"></div>
         <div class="form-group"><label>Giới tính:<span style="color:red">*</span></label><select id="nk_gt"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></div>
-        <div class="form-group"><label>Số điện thoại:<span style="color:red">*</span></label><input id="nk_sdt" value="${r.sdt || ''}"></div>
+        <div class="form-group"><label>Số điện thoại:</label><input id="nk_sdt" value="${r.sdt || ''}"></div>
         <div class="form-group"><label>Email:</label><input type="email" id="nk_email" value="${r.email || ''}"></div>
         <div class="form-group"><label>Nơi sinh:<span style="color:red">*</span></label><input id="nk_noisinh" value="${r.noiSinh || ''}"></div>
         <div class="form-group"><label>Số CCCD:<span style="color:red">*</span></label><input id="nk_cccd" value="${r.cccd || ''}"></div>
@@ -738,7 +925,7 @@ async function saveResident( nkId, hk = null) {
     { field: data.ten, name: 'Họ tên' },
     { field: data.ngaySinh, name: 'Ngày sinh' },
     { field: data.gioiTinh, name: 'Giới tính' },
-    { field: data.sdt, name: 'Số điện thoại' },
+    //{ field: data.sdt, name: 'Số điện thoại' },
     { field: data.noiSinh, name: 'Nơi sinh' },
     { field: data.cccd, name: 'Số CCCD' },
     { field: data.cccdNgayCap, name: 'Ngày cấp CCCD' },
@@ -766,6 +953,7 @@ async function saveResident( nkId, hk = null) {
       Saved(res.message);
       //alert("Lưu thành công");
       await loadData();
+      residentHTML ='';
       if(nkId) showResidentDetail(nkId);
       
       //backDetailView();
@@ -810,28 +998,47 @@ async function saveMoveResident(nkId) {
     await ApiService.saveResident(newData);
     loadData();
     backDetailView();
+
   }
 }
 
 
 // ===== 3. TẠM TRÚ / TẠM VẮNG =====
-function renderTemp(list = tempResidents) {
+async function renderTemp(list = tempResidents) {
   const tb = document.querySelector("#tempTable tbody");
-  tb.innerHTML = "";
+  //tb.innerHTML = "";
   if (!list || list.length === 0) {
     tb.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Không có dữ liệu</td></tr>";
     return;
   }
+  if(tempHTML && list == tempResidents){
+    //tb.innerHTML = tempHTML;
+    //await delay(500);
+    return tempHTML;
+  }
+  showLoading();
+  let temp = '';
   list.forEach((t, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${i + 1}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.queQuan}</td><td style="text-align:right">${t.thoiHanTamTru}</td>
-    <td>
-        <button class='btn small primary' onclick="showTempDetail(${t.nkID})">Chi tiết</button>
-        <button class='btn small success' onclick="showTempForm(${t.nkID})">Sửa</button>
-        <button class='btn small danger' onclick="deleteTemp(${t.nkID})">Xóa</button>
-    </td>`;
-    tb.appendChild(tr);
+    // const tr = document.createElement("tr");
+    // tr.innerHTML = `
+    temp+=`
+    <tr>
+      <td>${i + 1}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.queQuan}</td><td style="text-align: right">${t.thoiHanTamTru}</td>
+      <td style="text-align: center">
+          <button class='btn small primary' onclick="showTempDetail(${t.nkID})">Chi tiết</button>
+          <button class='btn small success' onclick="showTempForm(${t.nkID})">Sửa</button>
+          <button class='btn small danger' onclick="deleteTemp(${t.nkID})">Xóa</button>
+      </td>
+    </tr>`;
+    //tb.appendChild(tr);
   });
+
+  await delay(500);
+  tb.innerHTML = temp;
+  if(!tempHTML) tempHTML = temp;
+  await delay(100);
+  closeLoading();
+  return tempHTML;
 }
 
 // Hàm xem chi tiết tạm trú (đầy đủ thông tin)
@@ -986,7 +1193,11 @@ async function saveTemp(id, isEdit) {
       Saved(res.message);
       //alert("Lưu thành công");
       await loadData();
+      
       if(isEdit) {
+        
+        tempHTML ='';
+        backDetailView(true);
         showTempDetail(id);
       }
       
@@ -1008,8 +1219,11 @@ async function deleteTemp(id) {
     if(res.success){
       Saved(res.message);
       //alert("Lưu thành công");
-      loadData();
-      backDetailView();
+      await loadData();
+      tempHTML ='';
+      backDetailView(true);
+      
+      //renderTemp();
     }
     else{
       fireError();
@@ -1020,23 +1234,44 @@ async function deleteTemp(id) {
 
 }
 
-function renderAbsent(list = absentResidents) {
+async function renderAbsent(list = absentResidents) {
+  
   const tb = document.querySelector("#absentTable tbody");
-  tb.innerHTML = "";
+  //tb.innerHTML = "";
   if (!list || list.length === 0) {
     tb.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Không có dữ liệu</td></tr>";
-    return;
+    return absentHTML;
   }
+  if(list == absentResidents && absentHTML){
+    //tb.innerHTML =absentHTML;
+    //await delay(500);
+    
+    return absentHTML;
+  }
+  showLoading();
+  let temp = '';
   list.forEach((t, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${i + 1}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.cccd}</td><td>${t.noiChuyenDen}</td>
-    <td>
-        <button class='btn small primary' onclick="showAbsentDetail(${t.nkID})">Chi tiết</button>
-        <button class='btn small success' onclick="showAbsentForm(${t.nkID})">Sửa</button>
-        <button class='btn small danger' onclick="deleteAbsent(${t.nkID})">Xóa</button>
-    </td>`;
-    tb.appendChild(tr);
+    //const tr = document.createElement("tr");
+    // tr.innerHTML = `
+    temp+=`
+    <tr>
+      <td>${i + 1}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.cccd}</td><td>${t.noiChuyenDen}</td>
+      <td style="text-align: center">
+          <button class='btn small primary' onclick="showAbsentDetail(${t.nkID})">Chi tiết</button>
+          <button class='btn small success' onclick="showAbsentForm(${t.nkID})">Sửa</button>
+          <button class='btn small danger' onclick="deleteAbsent(${t.nkID})">Xóa</button>
+      </td>
+    </tr>
+    `;
+    //tb.appendChild(tr);
   });
+  await delay(500);
+  tb.innerHTML = temp;
+  if(!absentHTML) absentHTML = temp;
+  await delay(100);
+  closeLoading();
+  return absentHTML;
+
 }
 
 // Hàm xem chi tiết tạm vắng (có nút sửa)
@@ -1150,16 +1385,28 @@ async function saveAbsent(id, isEdit) {
     //alert('Vui lòng điền đầy đủ các trường bắt buộc (*)!');
     return;
   }
+
   if ( await confirmm(isEdit?"Lưu thay đổi?" : "Thêm tạm vắng cho người này?")) {
+    //showLoading("Đang xử lý");
     const res = await ApiService.saveAbsentResident(data);
     if(res.success){
-      Saved(res.message);
+      
       //alert("Lưu thành công");
       await loadData();
+      Saved(res.message);
       if(isEdit){
+        backDetailView(true);
         showAbsentDetail(id);
+        
       }
-      //backDetailView();
+      else{
+        backDetailView();
+        showResidentDetail(id);
+        // absentHTML ='';
+        // await renderAbsent();
+        //closeLoading();
+      }
+      
     }
     else{
       fireError();
@@ -1176,27 +1423,366 @@ async function deleteAbsent(id) {
   if ( await confirmm("Xóa tạm vắng?")) {
     const res = await ApiService.deleteAbsentResident(id);
     if(res.success){
+      
       Saved(res.message);
-      //alert("Lưu thành công");
-      loadData();
-      backDetailView();
+      await loadData();
+      absentHTML ='';
+      backDetailView(true);
+      
+      //renderAbsent();
     }
     else{
       fireError(res.message);
+      
+    }
+
+  }
+}
+
+async function renderRewards(list = rewards) {
+  const tb = document.querySelector("#rewardTable tbody");
+  tb.innerHTML = "";
+  if (!list || list.length === 0) {
+    tb.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Không có dữ liệu</td></tr>";
+    return;
+  }
+  list.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.ten}</td>
+      <td>${r.loai === 'LE' ? "Lễ" : "Học tập"}</td>
+      <td>${(r.tongGT).toLocaleString("vi-VN")} Đồng</td>
+      <td>${formatDate(r.ngayTao)}</td>
+      <td>
+        <button class="btn small primary" onclick ="showRewardDetail(${r.id})">Chi tiết</button>
+        <button class="btn small second" onclick ="changeRewardInfomation(${r.id})">Sửa</button>
+        <button class="btn small danger" onclick = "deleteReward(${r.id})">Xoá</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+
+}
+
+
+function showRewardForm(){
+  const contentHtml = `
+    <div class="form-group">
+      <label>Tên đợt thưởng</label>
+      <input type="text" id="rw_ten" placeholder="Ví dụ: Trung thu 2025">
+    </div>
+
+    <div class="form-group">
+      <label>Loại đợt thưởng</label>
+      <select id="rw_loai" onchange="onChangeLoaiThuong()">
+        <option value="">-- Chọn loại --</option>
+        <option value="LE">🎁 Dịp lễ</option>
+        <option value="HOCTAP">🎓 Học tập</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="dg_form" style="display:none">
+      <label>Giá trị 1 phần quà</label>
+      <input type="number" id="rw_dg" placeholder="VD: 50.000đ, 100.000đ,...">
+    </div>
+
+    <div class="form-group">
+      <label>Ghi chú</label>
+      <input type="text" id="rw_gc" value="">
+    </div>
+    <div class="form-group">
+      <label>Ngày tạo</label>
+      <input type="date" id="rw_ngayTao" value="${ new Date().toISOString().split('T')[0]}" readonly class="readonly-field">
+    </div>
+    <div class="form-actions">
+      <button class="btn success" onclick="addReward()">Lưu</button>
+      <button class="btn" onclick="cancelForm()">Huỷ</button>
+    </div>
+  
+  `
+  showDetailView("Thêm đợt thưởng", contentHtml, true);
+}
+
+function onChangeLoaiThuong() {
+  const loai = document.getElementById("rw_loai").value;
+  const leGroup = document.getElementById("dg_form");
+
+  if (loai === "LE") {
+    leGroup.style.display = "block";
+  } else {
+    leGroup.style.display = "none";
+    document.getElementById("rw_dg").value = "";
+  }
+}
+
+
+
+
+async function showRewardDetail(id){
+  
+  const r = rewards.find(x => x.id === id);
+  
+  if(!r) {
+    
+    return ;
+  }
+
+  if(r.loai == 'LE'){
+
+    const tong = await ApiService.getTotalLe(id);
+    
+    const dsThuong = await ApiService.getDetailLe(id);
+    let ds =``;
+    dsThuong.forEach(item =>{
+      ds+=`
+        <tr>
+          <td>${item.ten}</td>
+          <td>${item.soPhanQua}</td>
+          <td>${item.tien.toLocaleString("vi-VN")}</td>
+        </tr>
+      `
+    });
+
+    contentHtml = `
+      <div id="reward_info" style="display: block;">
+        <div class="reward-info-display">
+          <h4>Thông tin chung</h4>
+          <div class="info-grid">
+            <div class="info-field"><label>Tên đợt: </label> <span id="info_ten">${r.ten || ''}</span></div>
+            <div class="info-field"><label>Loại thưởng: </label> <span id="info_loai">Lễ</span></div>
+            <div class="info-field"><label>Tổng số hộ: </label> <span id="info_ns">${tong.tongHo || ''}</span></div>
+            <div class="info-field"><label>Giá trị mỗi phần quà: </label> <span id="info_ns">${r.donGia || ''}</span></div>
+            <div class="info-field"><label>Tổng số phần quà: </label> <span id="info_cccd">${tong.tongNg || ''}</span></div>
+            <div class="info-field"><label>Tổng số tiền: </label> <span id="info_qq">${ (tong.tongTien).toLocaleString("vi-VN")}</span></div>
+            <div class="info-field"><label>Ngày tạo</label> <span id="info_sdt">${r.ngayTao || 'N/A'}</span></div>
+          </div>
+        </div>
+        
+        <div class="section-divider">
+          <h4 style="color: #e74c3c; margin-top: 0;">Thông tin chi tiết</h4>
+        </div>
+        <table id="rewardTableLe">
+          <thead>
+                <tr>
+                  <th>Tên chủ hộ</th> 
+                  <th>Số phần quà</th>
+                  <th>Số tiền nhận</th>
+                </tr>
+              </thead>
+              <tbody>${ds}</tbody>
+        </table>
+      </div>
+    `
+  }
+  else{
+    const tong = await ApiService.getTotalHocTap(id);
+    const dsThuong = await ApiService.getDetailHocTap(id);
+    let ds =``;
+    dsThuong.forEach(item =>{
+      ds+=`
+        <tr>
+          <td>${item.ten}</td>
+          <td>${item.truong}</td>
+          <td>${item.lop}</td>
+          <td>
+            <select data-old="${item.tt || ''}" onchange="onChangeThanhTich(${r.id},${item.id}, this)" >
+              <option value="">-- Chọn --</option>
+              <option value="GIOI" ${item.tt === 'GIOI' ? 'selected' : ''}>Giỏi</option>
+              <option value="KHA" ${item.tt === 'KHA' ? 'selected' : ''}>Khá</option>
+              <option value="TB" ${item.tt === 'TB' ? 'selected' : ''}>Trung bình</option>
+            </select>
+          </td>
+          <td class="so-vo-hs">${item.soVo || ''}</td>
+        </tr>
+      `
+    });
+    contentHtml = `
+      <div id="reward_info" style="display: block;">
+        <div class="reward-info-display">
+          <h4>Thông tin chung</h4>
+          <div class="info-grid" id="detail-info-ht">
+            <div class="info-field"><label>Tên đợt: </label> <span id="info_ten">${r.ten || ''}</span></div>
+            <div class="info-field"><label>Loại thưởng: </label> <span id="info_loai">Học tập</span></div>
+            <div class="info-field"><label>Tổng số học sinh: </label> <span id="info_tongHS">${tong.tongHS || ''}</span></div>
+            <div class="info-field"><label>Số học sinh giỏi: </label> <span id="info_soHSGioi">${tong.soHS_Gioi || ''}</span></div>
+            <div class="info-field"><label>Số học sinh khá: </label> <span id="info_soHSKha">${tong.soHS_Kha || ''}</span></div>
+            <div class="info-field"><label>Số học sinh trung bình: </label> <span id="info_soHSTB">${tong.soHS_TrungBinh || ''}</span></div>
+            <div class="info-field"><label>Tổng số vở: </label> <span id="info_tongVo">${tong.tongVo || ''}</span></div>
+            <div class="info-field"><label>Tổng số tiền: </label> <span id="info_tongTien">${ (tong.tongTien || 0).toLocaleString("vi-VN")}</span></div>
+          </div>
+        </div>
+        
+        <div class="section-divider">
+          <h4 style="color: #e74c3c; margin-top: 0;">Thông tin chi tiết</h4>
+        </div>
+        <table id="rewardTableHocTap">
+          <thead>
+                <tr>
+                  <th>Tên học sinh</th> 
+                  <th>Trường học</th> 
+                  <th>Lớp</th> 
+                  <th>Thành tích</th> 
+                  <th>Số vở thưởng</th>
+                </tr>
+              </thead>
+              <tbody>${ds}</tbody>
+        </table>
+      </div>
+    `
+  }
+  showDetailView("Chi tiết thưởng", contentHtml, false);
+}
+async function onChangeThanhTich(idDot, id, Sel){
+  const oldvalue = Sel.dataset.old || "";
+  const value = Sel.value;
+  const data = {idDot, id, value};
+  const res = await ApiService.changeTT(data);
+  if(!res.success){
+    fireAlert(res.message);
+    Sel.value = oldvalue;
+    return;
+  }
+  
+  // login =0;
+  // rewardHTML ='';
+  // detailHistory =[];
+  renderLai =1;
+  Sel.dataset.old = value;
+
+  let soVo = 0;
+  if (value === "GIOI") soVo = 10;
+  else if (value === "KHA") soVo = 7;
+  else if (value === "TB") soVo = 5;
+  
+
+  const soVoCell = Sel
+    .closest("tr")
+    .querySelector(".so-vo-hs");
+  
+  if (soVoCell) {
+    soVoCell.innerText = soVo || '';
+  }
+  const r = rewards.find(x => x.id === idDot);
+  const tong = await ApiService.getTotalHocTap(idDot);
+  const x = document.getElementById('detail-info-ht')
+  x.innerHTML = `
+    <div class="info-field"><label>Tên đợt: </label> <span id="info_ten">${r.ten || ''}</span></div>
+    <div class="info-field"><label>Loại thưởng: </label> <span id="info_loai">Học tập</span></div>
+    <div class="info-field"><label>Tổng số học sinh: </label> <span id="info_tongHS">${tong.tongHS || ''}</span></div>
+    <div class="info-field"><label>Số học sinh giỏi: </label> <span id="info_soHSGioi">${tong.soHS_Gioi || ''}</span></div>
+    <div class="info-field"><label>Số học sinh khá: </label> <span id="info_soHSKha">${tong.soHS_Kha || ''}</span></div>
+    <div class="info-field"><label>Số học sinh trung bình: </label> <span id="info_soHSTB">${tong.soHS_TrungBinh || ''}</span></div>
+    <div class="info-field"><label>Tổng số vở: </label> <span id="info_tongVo">${tong.tongVo || ''}</span></div>
+    <div class="info-field"><label>Tổng số tiền: </label> <span id="info_tongTien">${ (tong.tongTien || 0).toLocaleString("vi-VN")}</span></div>
+  `
+  r.tongGT = tong.tongTien;
+}
+
+async function addReward(){
+  const data = {
+    tenDot: document.getElementById('rw_ten').value ,
+    loai: document.getElementById('rw_loai').value ,
+    donGia: document.getElementById('rw_dg').value,
+    ngayTao: document.getElementById('rw_ngayTao').value ,
+    ghiChu: document.getElementById('rw_gc').value 
+  }
+  if ( await confirmm("Tạo đợt thưởng mới")) {
+    const res = await ApiService.addReward(data);
+    //console.log(res);
+    if(res.success){
+      
+      Saved(res.message);
+      await loadData();
+      rewardHTML ='';
+      backDetailView(true);
+      
+      //renderRewards();
+    }
+    else{
+      fireError(res.message || null);
       //alert("Có lỗi xảy ra: " + (res.message || ""));
     }
 
   }
 }
 
-function renderRewards() {
-  const tb = document.querySelector("#rewardTable tbody");
-  tb.innerHTML = "";
-  rewards.forEach(r => {
-    tb.innerHTML += `<tr><td>${r.id}</td><td>${r.loai}</td><td>${r.giaTri}</td><td>-</td><td><button class="btn small">Sửa</button></td></tr>`;
-  });
+async function deleteReward(id) {
+  if ( await confirmm("Xoá đợt thưởng này?")) {
+    const res = await ApiService.deleteReward(id);
+    if(res.success){
+      
+      Saved(res.message);
+      await loadData();
+
+      rewardHTML ='';
+      backDetailView(true);
+      
+      //renderRewards();
+      
+    }
+    else{
+      fireError(res.message);
+      
+    }
+
+  }
 }
 
+function changeRewardInfomation(id){
+  
+  // const isEdit = id !== 'null' && id !== null;
+  // const t = isEdit ? absentResidents.find(x => x.id === id) : {};
+
+  // const t = absentResidents.find(x => x.id === id) || residents.find(x => x.id === id);
+  let r = rewards.find(x => x.id === id);
+
+  
+    // Form HTML (Common part)
+  const contentHtml = `
+    <div class="form-group"><label>Tên đợt thưởng:</label><input id="rw_ten" value="${r.ten }"></div>
+    ${r.loai != 'LE'?"" : `<div class="form-group"><label>Giá trị mỗi phần quà:</label><input id="rw_dg" value="${r.donGia }"></div>`}
+    <div class="form-actions">
+      <button class="btn success" onclick="saveReward(${id})">Lưu</button>
+      <button class="btn" onclick="cancelForm()">Hủy</button>
+    </div>
+  `;
+
+  showDetailView("Sửa thông tin đợt thưởng", contentHtml, true);
+}
+
+
+async function saveReward(id) {
+  const data = {
+    id: id,
+
+    ten: document.getElementById('rw_ten').value ,
+    donGia: document.getElementById('rw_dg')?.value || null,
+    
+  };
+
+  // Validate required fields
+  
+
+  if ( await confirmm("Lưu thay đổi?")) {
+    //showLoading("Đang lưu thông tin");
+    const res = await ApiService.saveReward(data);
+    if(res.success){
+
+      Saved(res.message);
+      //alert("Lưu thành công");
+      await loadData();
+      rewardHTML ='';
+      //renderRewards();
+      backDetailView(true);
+
+    }
+    else{
+      fireError();
+      //alert("Có lỗi xảy ra: " + (res.message || ""));
+    }
+
+  }
+
+}
 
 // ===== THỐNG KÊ (Yêu cầu của bạn) =====
 function calculateAge(dobString) {
@@ -1207,7 +1793,7 @@ function calculateAge(dobString) {
   return Math.abs(age_dt.getUTCFullYear() - 1970);
 }
 
-function updateStats(filterType = 'gender') {
+async function updateStats(filterType = 'gender') {
   document.querySelectorAll('.stats-filters .btn').forEach(btn => {
     btn.classList.remove('active');
     if (btn.getAttribute('onclick') === `updateStats('${filterType}')`) {
@@ -1332,15 +1918,29 @@ function showConfirmModal(msg, cb) {
   confirmModalCancel.onclick = () => confirmModal.style.display = "none";
 }
 
-function backDetailView() {
+function backDetailView(x = false) {
   //console.log(detailHistory);
+  if(x){
+    login =0;
+    hideDetailView();
+    forceNavigateTo(currentSection);
+    detailHistory =[];
+    return ;
+  }
+  if(renderLai){
+    login =0;
+    forceNavigateTo(currentSection);
+    renderLai =0;
+
+  }
   if (detailHistory.length === 0) {
-    hideDetailView(); // không còn bước trước
+    hideDetailView();// không còn bước trước
     return;
   }
   
   const prev = detailHistory.pop();
   detailViewTitle.textContent = prev.title;
+  //if(edited)
   detailViewContent.innerHTML = prev.content;
   detailView.style.display = "flex";
   isDetailDirty = false;
@@ -1371,13 +1971,14 @@ function OKE(str){
   });
 }
 
-function Saved(str = null){
+function Saved(str = null, timer = null){
+  closeLoading();
   Swal.fire({
     position: "center",
     icon: "success",
     title: str ? str : "Lưu thành công",
     showConfirmButton: false,
-    timer: 1500
+    timer: timer || 1500
   });
 }
 
@@ -1397,6 +1998,7 @@ async function confirmm(str, message = null, icon = null){
 }
 
 function fireError(errMessage = null){
+  closeLoading();
   Swal.fire({
     icon: "error",
     title: "Có lỗi đã xảy ra!",
@@ -1411,4 +2013,20 @@ function fireAlert(str, message = null){
     text: message,
     icon: "warning"
   });
+}
+
+function showLoading(str = null) {
+  closeLoading();
+  Swal.fire({
+    title: str || "Đang tải dữ liệu",
+    allowOutsideClick: false, // Không cho bấm ra ngoài
+    didOpen: () => {
+      Swal.showLoading(); // Hiển thị icon xoay xoay
+    }
+  });
+}
+
+function closeLoading() {
+  Swal.close();
+  console.log("closeLOADING")
 }

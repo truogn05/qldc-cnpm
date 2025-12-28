@@ -1,7 +1,7 @@
 # Việc cần làm:
 
 - [] sửa lại household
-- [] làm phần thưởng
+- [v] làm phần thưởng
 - [] thêm phần khai tử
 - [] showMoveResidentForm không xài đc đâu nhé
 ## Đã hoàn thành:

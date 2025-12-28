@@ -94,7 +94,7 @@
                   <th>Ngày sinh</th>
                   <th>Giới tính</th>
                   <th>Ghi chú</th>
-                  <th>Thao tác</th>
+                  <th style="width:200px">Thao tác</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -138,7 +138,7 @@
           </section>
 
           <section id="stats" class="section">
-            <div class="card">
+            <div class="card-stats">
               <div class="stats-filters">
                 <span>Thống kê theo:</span>
                 <button class="btn small primary active" onclick="updateStats('gender')">Giới tính</button>
@@ -146,8 +146,8 @@
                 <button class="btn small primary" onclick="updateStats('residence')">Tạm trú/vắng</button>
               </div>
             </div>
-            <div class="card" id="statsSummary"></div>
-            <div class="card">
+            <div class="card-stats" id="statsSummary"></div>
+            <div class="card-stats">
               <div class="chart-container">
                 <div class="chart" id="chart"></div>
                 <div class="chart-labels" id="chartLabels"></div>

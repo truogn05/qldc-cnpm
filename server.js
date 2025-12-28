@@ -93,6 +93,7 @@ app.get('/api/households', async (req, res) => {
                 tv.DIACHITRUOCKHICHUYENDEN as diaChiTruoc,
                 nk.DIACHIHIENNAY as noiOHienTai,
                 tv.QUANHEVOICHUHO as vaiTro,
+                FORMAT(tv.NGAYDKTHUONGTRU, 'yyyy-MM-dd') as ngayDKTT,
                 nk.GHICHU as ghiChu
             FROM THANHVIENCUAHO tv
             JOIN NHANKHAU nk ON tv.IDNHANKHAU = nk.ID
@@ -172,68 +173,355 @@ app.get('/api/residents', async (req, res) => {
 
 // 4. THÊM HỘ KHẨU MỚI
 app.post('/api/households', async (req, res) => {
-    const { id, chuHo, diaChi, ngayLapSo } = req.body;
-    const diaChiStr = `${diaChi.soNha}, ${diaChi.ngo}, ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.tinh}`;
-
-    const isEdit = id!==null;
+    //const id = parseInt(req.params.id);
+    const data = req.body;
+    //const diaChiStr = `${diaChi.soNha}, ${diaChi.ngo}, ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.tinh}`;
+    diaChi = data.household;
+    const diaChiStr = [
+        diaChi?.soNha,
+        diaChi?.ngo,
+        diaChi?.toDanPho,
+        diaChi?.phuongXa,
+        diaChi?.quanHuyen,
+        diaChi?.tinhTP
+        ].filter(Boolean).join(', ');
     const transaction = new sql.Transaction(await connectDB());
     try {
-        throw new error ;
         await transaction.begin();
-        if(isEdit){
-            //nếu chỉ là sửa thông tin của hộ -> update
-
-
-        }
-        else{
-            //nếu là tạo hk => 
-        }
+        
+        const chuHo = data.chuHo;
         const reqT = new sql.Request(transaction);
+        const result = await reqT
+            .input('diaChi', sql.NVarChar, diaChiStr)
+            .input('ngayLap', sql.Date, new Date())
+            //----- TT CHỦ HỘ
+            .input("hoTen", sql.NVarChar, chuHo.hoTen)
+            .input("ngaySinh", sql.Date, chuHo.ngaySinh)
+            .input("gioiTinh", sql.NVarChar, chuHo.gioiTinh)
+            .input("sdt", sql.NVarChar, chuHo.sdt)
+            .input("email", sql.NVarChar, chuHo.email)
+            .input("noiSinh", sql.NVarChar, chuHo.noiSinh)
+            .input("cccd", sql.NVarChar, chuHo.cccd)
+            .input("cccdNgayCap", sql.Date, chuHo.cccdNgayCap)
+            .input("cccdNoiCap", sql.NVarChar, chuHo.cccdNoiCap)
+            .input("danToc", sql.NVarChar, chuHo.danToc)
+            .input("tonGiao", sql.NVarChar, chuHo.tonGiao)
+            .input("quocTich", sql.NVarChar, chuHo.quocTich)
+            .input("nguyenQuan", sql.NVarChar, chuHo.nguyenQuan)
+            .input("hocVan", sql.NVarChar, chuHo.hocVan)
+            .input("ngheNghiep", sql.NVarChar, chuHo.ngheNghiep)
+            .input("noiLamViec", sql.NVarChar, chuHo.noiLamViec)
+            .input("diaChiTruoc", sql.NVarChar, chuHo.diaChiTruoc)
+            .query(`
+                DECLARE @tblHK TABLE (ID INT);
+                DECLARE @tblCH TABLE (ID INT);
 
-        // Tạo Chủ Hộ
-        const nkRes = await reqT
-            .input('hoten', sql.NVarChar, chuHo)
-            .input('ngaySinh', sql.Date, new Date())
-            .input('gioitinh', sql.NVarChar, 'Không rõ')
-            .query(`INSERT INTO NHANKHAU (HOTEN, NGAYSINH, GIOITINH) OUTPUT INSERTED.ID VALUES (@hoten, @ngaySinh, @gioitinh)`);
-        const idChuHo = nkRes.recordset[0].ID;
+                
 
-        // Tạo Hộ khẩu
-        const hkRes = await reqT
-            .input('idChuHo', sql.Int, idChuHo)
-            .input('dc', sql.NVarChar, diaChiStr)
-            .input('nl', sql.Date, ngayLapSo)
-            .query(`INSERT INTO HOKHAU (IDCHUHO, DIACHI, NGAYLAP) OUTPUT INSERTED.ID VALUES (@idChuHo, @dc, @nl)`);
-        const idHK = hkRes.recordset[0].ID;
+                -- 2. CCCD
+                IF NOT EXISTS (SELECT 1 FROM CANCUOCCONGDAN WHERE SOCCCD = @cccd)
+                BEGIN
+                INSERT INTO CANCUOCCONGDAN (SOCCCD, NGAYCAP, NOICAP)
+                VALUES (@cccd, @cccdNgayCap, @cccdNoiCap);
+                END
+                ELSE
+                BEGIN
+                    THROW 50001, N'Vui lòng kiểm tra lại thông tin CCCD', 1;
+                END
+                -- 3. NHÂN KHẨU
+                INSERT INTO NHANKHAU (
+                HOTEN, NGAYSINH, GIOITINH, SODIENTHOAI, EMAIL, NOISINH,
+                SOCCCD, DANTOC, TONGIAO, QUOCTICH, NGUYENQUAN,
+                TRINHDOHOCVAN, NGHENGHIEP, NOILAMVIEC,
+                NOITHUONGTRU, DIACHIHIENNAY
+                )
+                OUTPUT INSERTED.ID INTO @tblCH
+                VALUES (
+                @hoTen, @ngaySinh, @gioiTinh, @sdt, @email, @noiSinh,
+                @cccd, @danToc, @tonGiao, @quocTich, @nguyenQuan,
+                @hocVan, @ngheNghiep, @noiLamViec,
+                @diaChi, @diaChi
+                );
 
-        // Link vào bảng Thành viên
-        await reqT
-            .input('idNk', sql.Int, idChuHo)
-            .input('idHk', sql.Int, idHK)
-            .query(`INSERT INTO THANHVIENCUAHO (IDNHANKHAU, IDHOKHAU, QUANHEVOICHUHO) VALUES (@idNk, @idHk, N'Chủ hộ')`);
+                DECLARE @idCH INT = (SELECT TOP 1 ID FROM @tblCH);
+
+                -- 1. HỘ KHẨU
+                INSERT INTO HOKHAU (IDCHUHO, DIACHI, NGAYLAP)
+                OUTPUT INSERTED.ID INTO @tblHK
+                VALUES (@idCH, @diaChi, @ngayLap);
+
+                DECLARE @idHK INT = (SELECT TOP 1 ID FROM @tblHK);
+
+                -- 4. LIÊN KẾT HỘ
+                INSERT INTO THANHVIENCUAHO (
+                IDNHANKHAU, IDHOKHAU, QUANHEVOICHUHO, DIACHITRUOCKHICHUYENDEN
+                )
+                VALUES (@idCH, @idHK, N'Chủ hộ', @diaChiTruoc);
+
+                SELECT @idHK AS idHK;
+                `)
 
         await transaction.commit();
-        res.json({ success: true , message: "Thêm hộ khẩu mới thành công!"});
+        res.json({hkId: result.recordset[0].idHK, success: true , message: "Tạo hộ khẩu mới thành công!"});
     } catch (err) {
+        console.error("lỗi khi add household ", err)
         if (transaction) await transaction.rollback();
-        res.status(500).json({ error: err.message , messsage: "Thêm hộ khẩu mới không thành công!"});
+        res.status(500).json({success:false, error: err.message , message: "Tạo hộ khẩu mới không thành công!"});
+    }
+});
+//tách hộ
+app.post('/api/households/split', async (req, res) => {
+    const data = req.body;
+    const transaction = new sql.Transaction(await connectDB());
+
+    try {
+        await transaction.begin();
+
+        const newHK = data.HoKhauMoi;
+        //console.log(newHK);
+        /* =======================
+           TVP: danh sách thành viên
+        ======================= */
+        const tvp = new sql.Table("dbo.ThanhVienType");
+        tvp.columns.add("IDNHANKHAU", sql.Int);
+        tvp.columns.add("QUANHEVOICHUHO", sql.NVarChar(50));
+        console.log(newHK.thanhVien);
+        newHK.thanhVien.forEach(tv => {
+            console.log(tv);
+            tvp.rows.add(tv.id, tv.vaiTro);
+        });
+        console.log(tvp);
+        //throw new Error();
+        const reqT = new sql.Request(transaction);
+
+        const result = await reqT
+            // ---- hộ khẩu cũ
+            .input('oldHkId', sql.Int, data.idHoKhauCu)
+
+            // ---- hộ khẩu mới
+            .input('diaChi', sql.NVarChar, data.diaChi)
+            .input('ngayLap', sql.Date, new Date())
+            .input('idCHMoi', sql.Int, newHK.idChuHo)
+
+            // ---- TVP thành viên
+            .input('thanhVien', tvp)
+            .execute('dbo.SplitHousehold');
+
+        await transaction.commit();
+
+        res.json({
+            success: true,
+            newHkId: result.recordset[0].newHkId,
+            message: "Tách hộ khẩu thành công!"
+        });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error("Lỗi khi split household:", err);
+        res.status(500).json({
+            success: false,
+            error: err.message,
+            message: "Tách hộ khẩu không thành công!"
+        });
     }
 });
 
-// 5. XOÁ HỘ KHẨU
+
+//sửa tt hk
+app.put('/api/households/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const {  chuHo, diaChi, ngayLapSo } = req.body;
+    //const diaChiStr = `${diaChi.soNha}, ${diaChi.ngo}, ${diaChi.duong}, ${diaChi.phuong}, ${diaChi.quan}, ${diaChi.tinh}`;
+    const diaChiStr = [
+        diaChi?.soNha,
+        diaChi?.ngo,
+        diaChi?.duong,
+        diaChi?.phuong,
+        diaChi?.quan,
+        diaChi?.tinh
+        ].filter(Boolean).join(', ');
+    //const isEdit = id!==null;
+    const transaction = new sql.Transaction(await connectDB());
+    try {
+        await transaction.begin();
+        
+        const reqT = new sql.Request(transaction);
+        await reqT
+            .input('diaChi', sql.NVarChar, diaChiStr)
+            .input('id', sql.Int, id)
+            .query(`
+                UPDATE HOKHAU
+                SET DIACHI = @diaChi
+                WHERE ID = @id;
+
+                UPDATE nk
+                SET 
+                    nk.NOITHUONGTRU = @diaChi,
+                    nk.DIACHIHIENNAY = 
+                        CASE 
+                            WHEN nk.DIACHIHIENNAY = nk.NOITHUONGTRU 
+                            THEN @diaChi
+                            ELSE nk.DIACHIHIENNAY
+                        END
+                FROM NHANKHAU nk
+                INNER JOIN THANHVIENCUAHO tv
+                    ON nk.ID = tv.IDNHANKHAU
+                WHERE tv.IDHOKHAU = @id;
+                `)
+
+        await transaction.commit();
+        res.json({ success: true , message: "Sửa thông tin hộ khẩu thành công!"});
+    } catch (err) {
+        console.error("lỗi khi put household id", err)
+        if (transaction) await transaction.rollback();
+        res.status(500).json({ error: err.message , message: "Sửa hộ khẩu mới không thành công!"});
+    }
+});
+
+//thêm nhân khẩu mới vào hộ khẩu
+app.post('/api/households/resident', async (req,res) => {
+    const data = req.body;
+    const transaction = new sql.Transaction(await connectDB());
+
+    try{
+        await transaction.begin();
+        const reqT = new sql.Request(transaction);
+        await reqT
+            .input("hoTen", sql.NVarChar, data.hoTen)
+            .input("ngaySinh", sql.Date, data.ngaySinh)
+            .input("gioiTinh", sql.NVarChar, data.gioiTinh)
+            .input("sdt", sql.VarChar, data.sdt || null)
+            .input("email", sql.VarChar, data.email || null)
+            .input("noiSinh", sql.NVarChar, data.noiSinh)
+
+            .input("danToc", sql.NVarChar, data.danToc)
+            .input("tonGiao", sql.NVarChar, data.tonGiao)
+            .input("quocTich", sql.NVarChar, data.quocTich)
+            .input("nguyenQuan", sql.NVarChar, data.nguyenQuan)
+
+            .input("hocVan", sql.NVarChar, data.hocVan || null)
+            .input("ngheNghiep", sql.NVarChar, data.ngheNghiep || null)
+            .input("noiLamViec", sql.NVarChar, data.noiLamViec || null)
+
+            .input("noiOHienTai", sql.NVarChar, data.noiOHienTai)
+            .input("quanHeChuHo", sql.NVarChar, data.quanHeChuHo)
+
+            // ====== CCCD ======
+            .input("cccd", sql.VarChar, data.cccd === 'Mới sinh' ? null : data.cccd)
+            .input("cccdNgayCap", sql.Date, data.cccdNgayCap || null)
+            .input("cccdNoiCap", sql.NVarChar, data.cccdNoiCap || null)
+
+            // ====== HỘ KHẨU ======
+            .input("idHoKhau", sql.Int, data.idHoKhau)
+
+            .query(`
+                DECLARE @IDNHANKHAU INT;
+
+                IF @cccd IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM CANCUOCCONGDAN WHERE SOCCCD = @cccd
+                )
+                    THROW 50001, N'Số CCCD này đã tồn tại', 1;
+
+                IF @cccd IS NOT NULL
+                BEGIN
+                    INSERT INTO CANCUOCCONGDAN (
+                        SOCCCD,
+                        NGAYCAP,
+                        NOICAP
+                    )
+                    VALUES (
+                        @cccd,
+                        @cccdNgayCap,
+                        @cccdNoiCap
+                    );
+                END
+                DECLARE @diaChiTT NVARCHAR(255) = (SELECT DIACHI FROM HOKHAU WHERE ID = @idHoKhau);
+                INSERT INTO NHANKHAU ( HOTEN, NGAYSINH, GIOITINH, SODIENTHOAI, EMAIL, NOISINH, DANTOC, TONGIAO, QUOCTICH, NGUYENQUAN, TRINHDOHOCVAN, NGHENGHIEP, NOILAMVIEC, DIACHIHIENNAY, SOCCCD )
+                VALUES ( @hoTen, @ngaySinh, @gioiTinh, @sdt, @email, @noiSinh, @danToc, @tonGiao, @quocTich, @nguyenQuan, @hocVan, @ngheNghiep, @noiLamViec, @diaChiTT, @cccd );
+
+                SET @IDNHANKHAU = SCOPE_IDENTITY();
+
+                INSERT INTO THANHVIENCUAHO ( IDHOKHAU, IDNHANKHAU, QUANHEVOICHUHO, DIACHITRUOCKHICHUYENDEN)
+                VALUES ( @idHoKhau, @IDNHANKHAU, @quanHeChuHo, @noiOHienTai );
+                `)
+
+
+
+        await transaction.commit();
+        res.json({ success: true , message: "Thêm nhân khẩu mới thành công!"});
+
+    }
+    catch (err) {
+        console.error("lỗi khi thêm nhân khẩu ", err)
+        if (transaction) await transaction.rollback();
+        res.status(500).json({success:false, error: err.message , message: "Thêm nhân khẩu mới không thành công!"});
+
+    }
+
+});
 app.delete('/api/households/:id', async (req, res) => {
-    const idInt = parseInt(req.params.id.replace('HK', ''));
+    const idInt = parseInt(req.params.id);
     try {
         const pool = await connectDB();
-        await pool.request().input('id', sql.Int, idInt).query(`
-            DELETE FROM THANHVIENCUAHO WHERE IDHOKHAU = @id;
-            DELETE FROM HOKHAU WHERE ID = @id;
-        `);
+        await pool.request()
+            .input('id', sql.Int, idInt).query(`
+                UPDATE NHANKHAU
+                SET GHICHU = N'Đã chuyển đi'
+                WHERE ID IN (SELECT IDNHANKHAU FROM THANHVIENCUAHO WHERE IDHOKHAU = @id)
+
+                DELETE FROM THANHVIENCUAHO WHERE IDHOKHAU = @id;
+                DELETE FROM HOKHAU WHERE ID = @id;
+            `);
         res.json({ success: true });
     } catch (err) {
         
         console.error("Lỗi API xoá hộ khẩu: ", err); // Log lỗi ra console để dễ debug
         res.status(500).json({ error: err.message, message: "Xoá hộ khẩu không thành công!" });
+    }
+});
+
+app.delete('/api/residents/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+
+    const transaction = new sql.Transaction(await connectDB());
+
+    try {
+        await transaction.begin();
+        const reqT = new sql.Request(transaction);
+
+        await reqT
+            .input('id', sql.Int, id)
+            .query(`
+                -- 1. Kiểm tra có phải chủ hộ không
+                IF EXISTS (
+                    SELECT 1
+                    FROM HOKHAU
+                    WHERE IDCHUHO = @id
+                )
+                BEGIN
+                    THROW 50002, N'Không thể xoá: Nhân khẩu là chủ hộ', 1;
+                END
+
+                -- 2. Xoá đăng ký thường trú (liên kết hộ)
+                DELETE FROM THANHVIENCUAHO
+                WHERE IDNHANKHAU = @id;
+            `);
+
+        await transaction.commit();
+
+        res.json({
+            success: true,
+            message: "Đã xoá đăng ký thường trú của nhân khẩu"
+        });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error("Lỗi API xoá đăng ký thường trú:", err);
+        res.status(500).json({
+            success: false,
+            error: err.message,
+            message: err.message
+        });
     }
 });
 
@@ -388,7 +676,66 @@ app.post('/api/residents', async (req, res) => {
         res.status(500).json({ error: err.message, message: data.id? "Lỗi khi sửa thông tin nhân khẩu" : "Lỗi khi thêm mới nhân khẩu" });
     }
 });
+app.post('/api/death', async (req,res) =>{
+    const data = req.body;
+    const transaction = new sql.Transaction(await connectDB());
 
+    try{
+        await transaction.begin();
+        const pool = new sql.Request(transaction);
+        await pool 
+            .input('id',sql.Int, data.id)
+            .input('ngayMat', sql.Date, data.ngayQuaDoi)
+            .input('noiMat', sql.NVarChar, data.noiQuaDoi)
+            .input('lyDo', sql.NVarChar, data.lyDo)
+            .query(`
+                INSERT INTO KHAITU (IDNGUOIMAT, NGAYMAT, NOIMAT, LYDOMAT)
+                VALUES (@id, @ngayMat, @noiMat, @lyDo)
+                UPDATE NHANKHAU
+                SET GHICHU = N'Đã qua đời'
+                WHERE ID = @id
+                `)
+        await transaction.commit();
+        res.json({
+            success:true,
+            message: "Khai tử thành công"
+        })
+    }
+    catch (e){
+        console.error("Lỗi API post death:", err); // Log lỗi ra console để dễ debug
+        res.status(500).json({ error: err.message, message: "Lỗi khi cập nhật thông tin khai tử!" });
+    }
+});
+
+app.get('/api/death/:id', async (req,res) =>{
+    const id = req.params.id;
+    
+
+    try{
+        const pool = await connectDB();
+        
+        const result = await pool.request()
+            .input('id',sql.Int, id)
+            .query(`
+                SELECT 
+                    FORMAT(NGAYMAT, 'yyyy-MM-dd') as ngayMat,
+                    LYDOMAT as lyDo,
+                    NOIMAT as noiMat
+                FROM KHAITU
+                WHERE IDNGUOIMAT = @id
+                `)
+        
+        res.json({
+            success:true,
+            ...result.recordset[0]
+            //message: "Khai tử thành công"
+        })
+    }
+    catch (e){
+        console.error("Lỗi API get death:", err); // Log lỗi ra console để dễ debug
+        res.status(500).json({ error: err.message, message: "Lỗi khi Lấy thông tin khai tử từ server" });
+    }
+});
 // 7. TẠM TRÚ & TẠM VẮNG (Giữ nguyên logic cũ)
 app.get('/api/temp-residents', async (req, res) => {
     try {
@@ -550,7 +897,7 @@ app.post('/api/temp-residents', async (req, res) => {
                     `);
                 await reqT
                     .input('id', sql.Int,  nkRes.recordset[0].ID)
-                    .input('NoiTT', sql.NVarChar, data.noiTamTru || null)
+                    //.input('NoiTT', sql.NVarChar, data.noiTamTru || null)
                     .input('ngayDK', sql.Date, data.ngayDangKy)
                     .input('denNgay', sql.Date, data.denNgay)
                     .input('lyDo', sql.NVarChar, data.lyDo || '')
@@ -723,7 +1070,7 @@ app.post('/api/temp-residents', async (req, res) => {
             }
         }
         await transaction.commit();
-        res.json({ success: true, message: isEdit? "Sửa thông tin tạm trú thành công!" : "Thêm tạm trú thành công" });
+        res.json({ success: true, message: isEdit? "Sửa thông tin người tạm trú thành công!" : "Thêm tạm trú thành công" });
 
     } catch (err) {
         if (transaction) await transaction.rollback();
@@ -811,6 +1158,37 @@ app.post('/api/absent-residents', async (req, res) => {
     }
 });
 
+app.put('/api/temp-residents/:id', async (req, res) => {
+    const data = req.body;
+    const id = req.params.id;
+    try {
+        const pool = await connectDB();
+        
+        // Xóa trong bảng TAMTRU (Không xóa nhân khẩu để lưu hồ sơ)
+        await pool.request()
+                .input('id', sql.Int, id)
+                .input('ngayDK', sql.Date, data.ngayDangKy)
+                .input('denNgay', sql.Date, data.denNgay)
+                .input('noiTT', sql.NVarChar, data.noiTamTru)
+                .input('lyDo', sql.NVarChar, data.lyDo)
+                .query(`
+                    UPDATE TAMTRU
+                    SET
+                        TUNGAY = @ngayDK,
+                        DENNGAY = @denNgay,
+                        LYDO = @lyDo,
+                        NOIOHIENTAI = @noiTT
+                    WHERE IDNHANKHAU = @id
+                    UPDATE NHANKHAU
+                    SET DIACHIHIENNAY = @noiTT
+                    WHERE ID = @id
+                    `);
+        res.json({ success: true, message: "Đã thay đổi thông tin tạm trú" });
+    } catch (err) { 
+        
+        console.error("Lỗi API xoá Tạm trú:", err); // Log lỗi ra console để dễ debug
+        res.status(500).json({success: false, message: "Thay đổi thông tin tạm trú không thành công" }); }
+});
 app.delete('/api/temp-residents/:id', async (req, res) => {
     const data = req.body;
     const id = req.params.id;

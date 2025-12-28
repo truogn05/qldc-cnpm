@@ -35,8 +35,10 @@ body{
 }
 .btn.primary{background:#0a74bb;color:white;}
 .btn.primary:hover{background:#0966a6;}
-.btn.second{background:#bb800a;color:white;}
-.btn.second:hover{background:#ffaa00;}
+.btn.second{background:#ffaa00;color:white;}
+.btn.second:hover{background:#a87c26;}
+.btn.third{background:#ff00cc;color:white;}
+.btn.third:hover{background:#aa2c90;}
 .btn.small{font-size:13px;padding: 5px 10px;}
 .btn.danger{background:#e74c3c;color:white;}
 .btn.danger:hover{background:#c0392b;}
@@ -430,7 +432,8 @@ table.history-table th { background: #f9f9f9; top: 0; }
 }
 
 /* Tách hộ */
-.split-household-container {
+.split-household-container,
+.change-household-container {
   display: flex;
   gap: 15px;
   height: 85%;
@@ -540,11 +543,12 @@ table.history-table th { background: #f9f9f9; top: 0; }
 .chart-container {
   display: flex;
   flex-direction: column;
+  margin-top: 10px;
 }
 .chart{
   display:flex;
   align-items:flex-end;
-  height:380px;
+  height:370px;
   padding: 20px 15px 0 15px;
   border-bottom: 2px solid #ccc;
 }
@@ -889,4 +893,24 @@ select:focus {
 
 .card label{
   margin-bottom:5px;
+}
+
+
+.owner-select-row {
+  display: flex;
+  gap: 10px;
+}
+
+.owner-select {
+  flex: 2;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none;
+}
+
+.relation-select {
+  flex: 1;
+  background-color: #f5f5f5;
+  cursor: not-allowed;
 }

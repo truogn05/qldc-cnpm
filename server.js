@@ -125,7 +125,52 @@ app.get('/api/households', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+app.get('/api/history/households/:id', async (req, res) =>{
+    const id = parseInt(req.params.id);
+    try{
+        const pool = await connectDB();
 
+        // Lấy thông tin Hộ Khẩu
+        const lsHK = await pool
+                    .request()
+                    .input('id', sql.Int, id)
+                    .query(`
+                        SELECT 
+                            THONGTIN AS tt,
+                            FORMAT(NGAYTHAYDOI, 'yyyy-MM-dd') AS ngay
+                        FROM LICHSUHOKHAU
+                        WHERE IDHOKHAU = @id
+                        ORDER BY NGAYTHAYDOI DESC
+                        `)
+        res.json(lsHK.recordset);
+    }
+    catch (e){
+        console.error("lỗi khi get history" ,e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+app.post('/api/history/households', async (req, res) =>{
+    const data = req.body;
+    try{
+        const pool = await connectDB();
+
+        // Lấy thông tin Hộ Khẩu
+        await pool
+                    .request()
+                    .input('id', sql.Int, data.id)
+                    .input('tt', sql.NVarChar, data.tt)
+                    .query(`
+                        INSERT INTO LICHSUHOKHAU (IDHOKHAU, NGAYTHAYDOI, THONGTIN)
+                        VALUES (@id, GETDATE(), @tt)
+
+                        `)
+        res.json({success: true});
+    }
+    catch (e){
+        console.error("lỗi khi lưu history" ,e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
 // 3. LẤY DANH SÁCH TOÀN BỘ NHÂN KHẨU (RIÊNG BIỆT)
 // API này phục vụ cho tab "Quản lý nhân khẩu" và tìm kiếm nhân khẩu
 app.get('/api/residents', async (req, res) => {
@@ -278,19 +323,17 @@ app.post('/api/households/split', async (req, res) => {
         await transaction.begin();
 
         const newHK = data.HoKhauMoi;
-        //console.log(newHK);
         /* =======================
            TVP: danh sách thành viên
         ======================= */
         const tvp = new sql.Table("dbo.ThanhVienType");
         tvp.columns.add("IDNHANKHAU", sql.Int);
         tvp.columns.add("QUANHEVOICHUHO", sql.NVarChar(50));
-        console.log(newHK.thanhVien);
+        
         newHK.thanhVien.forEach(tv => {
-            console.log(tv);
             tvp.rows.add(tv.id, tv.vaiTro);
         });
-        console.log(tvp);
+
         //throw new Error();
         const reqT = new sql.Request(transaction);
 
@@ -375,6 +418,38 @@ app.put('/api/households/:id', async (req, res) => {
         console.error("lỗi khi put household id", err)
         if (transaction) await transaction.rollback();
         res.status(500).json({ error: err.message , message: "Sửa hộ khẩu mới không thành công!"});
+    }
+});
+
+//thay đổi chủ hộ
+app.put('/api/households/owner/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const data = req.body;
+    const transaction = new sql.Transaction(await connectDB());
+    try {
+        await transaction.begin();
+        
+        const tvp = new sql.Table("dbo.ThanhVienType");
+        tvp.columns.add("IDNHANKHAU", sql.Int);
+        tvp.columns.add("QUANHEVOICHUHO", sql.NVarChar(50));
+        
+        data.tv.forEach(tv => {
+            tvp.rows.add(tv.id, tv.vaiTro);
+        });
+        const reqT = new sql.Request(transaction);
+        await reqT
+            
+            .input('idHK', sql.Int, data.idHK)
+            .input('newOwnerId', sql.Int, data.newOwnerId)
+            .input('thanhVien', tvp)
+            .execute('dbo.changeOwner');
+
+        await transaction.commit();
+        res.json({ success: true , message: "Thay đổi chủ hộ khẩu thành công!"});
+    } catch (err) {
+        console.error("lỗi khi đổi chủ hộ", err)
+        if (transaction) await transaction.rollback();
+        res.status(500).json({ error: err.message , message: "Đổi chủ hộ không thành công!"});
     }
 });
 
@@ -516,7 +591,7 @@ app.delete('/api/residents/:id', async (req, res) => {
 
     } catch (err) {
         await transaction.rollback();
-        console.error("Lỗi API xoá đăng ký thường trú:", err);
+        //console.error("Lỗi API xoá đăng ký thường trú:", err);
         res.status(500).json({
             success: false,
             error: err.message,
@@ -1089,11 +1164,9 @@ app.post('/api/absent-residents', async (req, res) => {
         await transaction.begin();
         const pool = new sql.Request(transaction);
         //const pool = await connectDB();
-        //console.log("chạy đến đây r 1");
         // Lấy ID nhân khẩu thực từ frontend
         let nkId = null;
         if (data.isEdit) {
-            // console.log("chạy đến đây r 2");
             //nkId = parseInt(data.id.replace('TV', ''));
             await pool
                 .input('id', sql.Int, data.id)
@@ -1230,7 +1303,7 @@ app.delete('/api/absent-residents/:id', async (req, res) => {
                 SET DIACHIHIENNAY = NOITHUONGTRU 
                 WHERE ID = @id
                 `);
-        console.log("Đã xoá tạm vắng thành công ");
+        //console.log("Đã xoá tạm vắng thành công ");
         res.json({ success: true, message: "Đã xoá thông tin tạm vắng" });
     } catch (err) { 
         
@@ -1264,7 +1337,6 @@ app.get("/api/rewards", async (req, res) => {
                             `
                         );
     const data = result.recordset
-    // console.log(data);
     res.json(data);
   } catch (err) {
     console.error(err);
@@ -1388,11 +1460,9 @@ app.post("/api/rewards", async (req, res) => {
             `)
     }
     await transaction.commit();
-    //console.log(111111111);
     res.json({ success: true , message: "Tạo đợt thưởng mới thành công"});
   } catch (err) {
     console.error(err);
-    //console.log(22222);
     if (transaction) await transaction.rollback();
     res.json({ success: false });
   }

@@ -8,6 +8,23 @@ const ApiService = {
       return await res.json();
     } catch (e) { console.error(e); return []; }
   },
+  getHouseholdHistory: async (id) => {
+    try {
+      const res = await fetch(`/api/history/households/${id}`);
+      if (!res.ok) throw new Error('Lỗi server');
+      return await res.json();
+    } catch (e) { console.error(e); return []; }
+  },
+  saveHistory: async (data) => {
+    try {
+      const res = await fetch('/api/history/households', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch (e) { return { success: false, message: e.message }; }
+  },
   addHousehold: async (data) => {
     try {
       const res = await fetch('/api/households', {
@@ -32,7 +49,7 @@ const ApiService = {
     //const id =data.id;
     const {id, ...data} = Data;
     try {
-      console.log(data);
+      //console.log(data);
       const res = await fetch(`/api/households/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -44,6 +61,29 @@ const ApiService = {
         return {
           success: false,
           message: result.message || 'Cập nhật thông tin hộ khẩu thất bại'
+        };
+      }
+
+      return result;
+      return await res.json();
+    } catch (e) { return { success: false, message: e.message }; }
+  },
+  saveChangeOwner: async (Data) => {
+    //const id =data.id;
+    const {id, ...data} = Data;
+    try {
+      //console.log(data);
+      const res = await fetch(`/api/households/owner/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        return {
+          success: false,
+          message: result.message || 'Thay đổi thông tin chủ hộ thất bại'
         };
       }
 
@@ -106,7 +146,7 @@ const ApiService = {
     try {
       const res = await fetch(`/api/residents/${id}`, { method: 'DELETE' });
       return await res.json();
-    } catch (e) { return { success: false }; }
+    } catch (e) { return { success: false, message: e.message }; }
   },
 
   // --- TẠM TRÚ / TẠM VẮNG ---
@@ -527,6 +567,7 @@ async function forceNavigateTo(sectionId) {
     hideDetailView();
   }
   hide = 1;
+  detailHistory = [];
   if (sectionId == currentSection && login) {
 
     mainView[0].scrollTo({ top: 0, behavior: 'smooth' });
@@ -534,8 +575,8 @@ async function forceNavigateTo(sectionId) {
   }
   
   login = 1;
-  detailHistory = [];
-  console.log("forceNAV")
+  
+  //console.log("forceNAV")
 
   updateHeader(sectionId);
   // paginationState[sectionId].currentPage = 1;
@@ -795,11 +836,13 @@ async function renderHouseholds(list = households) {
           <td>${h.nhanKhau ? h.nhanKhau.length : 0}</td>
           <td >
             <button class='btn small primary' onclick='showHouseholdBookDetail(${h.realId})'>Chi tiết</button>
-            <button class='btn small success' onclick='editHouseholdForm(${h.realId})'>Sửa</button>
-            <button class='btn small' style="background-color: #f39c12; color: white;" onclick='showSplitHouseholdForm(${h.realId})'>Tách hộ</button>
-            <button class='btn small danger' onclick='deleteHousehold(${h.realId})'>Xoá</button>
           </td>
         </tr>`;
+
+        // <button class='btn small success' onclick='editHouseholdForm(${h.realId})'>Sửa</button>
+        //     <button class='btn small second'  onclick='showSplitHouseholdForm(${h.realId})'>Tách hộ</button>
+        //     <button class='btn small danger' onclick='deleteHousehold(${h.realId})'>Xoá</button>
+        //<button class="btn small success" onclick='addResidentForm(${h.realId})'>Thêm nhân khẩu mới</button>
   });
 
   await delay(100);
@@ -811,13 +854,19 @@ async function renderHouseholds(list = households) {
   return temp;
 }
 
-function showHouseholdBookDetail(realId) {
+async function showHouseholdBookDetail(realId) {
 
   const h = households.find(x => x.realId === realId);
   if (!h) {
     return;
   }
-
+  const history = await ApiService.getHouseholdHistory(realId);
+  let historyContent = '';
+  if(history){
+    historyContent = (history || []).map(ls => `
+      <div class="info-item-row full-width"><label style="font-size: 14px">Ngày: ${formatDate(ls.ngay)}</label><span style="font-size: 16px">${ls.tt}</span></div>
+      `).join('');
+  }
   const membersHtml = (h.nhanKhau || []).map(nk => `
     <div class="book-member-card">
       <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -826,7 +875,7 @@ function showHouseholdBookDetail(realId) {
           ${nk.ghiChu == 'Đã qua đời' ? '':`
             <button class="btn small success" onclick="showResidentForm(${nk.nkID}, ${realId})">Thay đổi thông tin</button>
             <button class="btn small second" onclick="showAbsentForm(${nk.nkID})">${nk.ghiChu == 'Tạm vắng' ? 'Sửa thông tin tạm vắng': 'Đăng ký tạm vắng'}</button>
-            <button class="btn small danger" onclick="declareDeathForm(${nk.nkID})">Khai tử</button>  
+            <button class="btn small third" onclick="declareDeathForm(${nk.nkID})">Khai tử</button>  
             `}
           <button class="btn small danger" onclick="deleteResident(${nk.nkID})">Xoá thường trú</button>  
           
@@ -882,20 +931,29 @@ function showHouseholdBookDetail(realId) {
       <div class="book-members-list">${membersHtml || '<p>Chưa có thành viên.</p>'}</div>
     </div>
     
+    <div class="book-section">
+      <h3>Lịch sử thay đổi</h3>
+      <div class="book-members-list">${historyContent || '<div class="info-item-row full-width"><span style="font-size: 16px">Chưa có thông tin thay đổi</span></div>'}</div>
+    </div>
+
     <div class="form-actions">
-      <button class="btn success" onclick='editHouseholdForm(${h.realId})'>Thay đổi thông tin hộ</button>
+      <button class="btn success" onclick='editHouseholdForm(${h.realId})'>Thay đổi thông tin hộ khẩu</button>
+      <button class="btn second" onclick='changeOwner(${h.realId})'>Thay đổi chủ hộ</button>
+      <button class="btn third" onclick='showSplitHouseholdForm(${h.realId})'>Tách hộ khẩu</button>
       <button class="btn primary" onclick='addResidentForm(${h.realId})'>Thêm nhân khẩu mới</button>
+      <button class='btn danger' onclick='deleteHousehold(${h.realId})'>Xoá hộ khẩu</button>
+      
     </div>
   `;
   showDetailView(`Sổ hộ khẩu: ${h.id}`, contentHtml);
 }
 function addHouseholdForm(){
   const title =  "Tạo hộ khẩu mới" ;
-
+    // <div class="section-divider">
+    //   <h4 style="color: #e74c3c; margin-top: 0; ">Thông tin cơ bản của hộ khẩu</h4>
+    // </div>
   const contentHtml = `
-    <div class="section-divider">
-      <h4 style="color: #e74c3c; margin-top: 0;">Thông tin cơ bản của hộ khẩu</h4>
-    </div>
+    <h4 style="color: #e74c3c; margin-top: 0; margin-bottom:15px; font-size: 16px; text-transform: uppercase;">Thông tin cơ bản của hộ khẩu</h4>
     <div class="form-grid-2">
       <div class="form-group"><label>Số nhà:<span style="color:red">*</span></label><input type="text" id="addHHSoNha" value=""></div>
       <div class="form-group"><label>Ngõ/Đường:<span style="color:red">*</span></label><input type="text" id="addHHNgo" value=""></div>
@@ -1022,11 +1080,12 @@ async function addHousehold(){
       diaChiTruoc: v("ch_diaChiHienNay")
     }
   };
-  console.log(data);
-  if(await confirmm("Xác nhận tạo hộ khẩu mới ?")){
+  
+  if(await confirmm("Xác nhận tạo hộ khẩu mới?")){
     const res = await ApiService.addHousehold(data);
 
     if (res.success) {
+      saveHistory(res.hkId, "Tạo hộ khẩu mới");
       Saved(res.message);
       await delay(200);
       
@@ -1043,17 +1102,27 @@ async function addHousehold(){
 }
 function editHouseholdForm(id ) {
   const h = households.find(x => x.realId === id);
-  
+  const dc = `${h.diaChi.soNha}, ${h.diaChi.ngo}, ${h.diaChi.duong}, ${h.diaChi.phuong}, ${h.diaChi.quan}, ${h.diaChi.tinh}`;
   const ch = residents.find(x => x.nkID === h.idCH) ;
   const title =  "Thay đổi thông tin hộ khẩu" ;
 
   const contentHtml = `
-    <div class="form-grid-2">
-      <div class="form-group"><label>Tên chủ hộ:</label><input type="text" id="formChuHo" value="${h?.chuHo || ''}" readonly class="readonly-field"></div>
-      <div class="form-group"><label>Số CCCD của chủ hộ</label><input type="text" id="formCCCD" value="${ch?.cccd || ''}" readonly class="readonly-field"></div>
+    <div class="household-info-display">
+      <h4>Thông tin hộ khẩu</h4>
+      <div class="info-grid">
+        <div class="info-field"><label>Họ tên chủ hộ:</label> <span id="info_ten">${h.chuHo}</span></div>
+        <div class="info-field"><label>Ngày lập sổ:</label><span id="info_ngayLap">${formatDate(h.ngayLapSo)}</span></div>
+        <div class="info-field"><label>Số nhà:</label> <span id="info_soNha">${h.diaChi.soNha}</span></div>
+        <div class="info-field"><label>Ngõ/Đường:</label> <span id="info_ngo">${h.diaChi.ngo}</span></div>
+        <div class="info-field"><label>Tổ dân phố:</label> <span id="info_tdp">${h.diaChi.duong}</span></div>
+        <div class="info-field"><label>Phường:</label> <span id="info_phuong">${h.diaChi.phuong}</span></div>
+        <div class="info-field"><label>Quận/Huyện:</label> <span id="info_qh">${h.diaChi.quan}</span></div>
+        <div class="info-field"><label>Tỉnh/Thành phố:</label> <span id="info_tp">${h.diaChi.tinh}</span></div>
+      </div>
     </div>
-
-    <div class="form-group"><label>Ngày lập sổ:</label><input type="date" id="formNgayLapSo" value="${h.ngayLapSo || new Date().toISOString().split('T')[0]}"  readonly class="readonly-field"></div>
+    <div class="section-divider">
+      <h4 style="color: #e74c3c; margin-top: 0;">Thông tin địa chỉ mới</h4>
+    </div>
     
     <div class="form-grid-2">
       <div class="form-group"><label>Số nhà:</label><input type="text" id="formSoNha" value="${h.diaChi.soNha || ''}"></div>
@@ -1071,14 +1140,14 @@ function editHouseholdForm(id ) {
     </div>
 
     <div class="form-actions">
-        <button class="btn success" onclick="editHousehold(${h.realId })">Lưu</button>
+        <button class="btn success" onclick="editHousehold(${h.realId }, '${dc}')">Lưu</button>
         <button class="btn" onclick="cancelForm()">Hủy</button>
     </div>
   `;//thêm ngày đăng ký new Date().toISOString().split('T')[0]
   showDetailView(title, contentHtml, true);
 }
 
-async function editHousehold(id) {
+async function editHousehold(id, dc = null) {
   const data = {
     id: id,
     // chuHo: document.getElementById("formChuHo").value,
@@ -1093,12 +1162,14 @@ async function editHousehold(id) {
       tinh: document.getElementById("formTinh").value
     }
   };
-
+  const dc2 = `${data.diaChi.soNha}, ${data.diaChi.ngo}, ${data.diaChi.duong}, ${data.diaChi.phuong}, ${data.diaChi.quan}, ${data.diaChi.tinh}`;
   //if (!data.chuHo) return fireAlert("Nhập tên chủ hộ!");
-  if (await confirmm("Lưu thay đổi?")) {
+  if (await confirmm("Lưu thay đổi?", "Xác nhận thay đổi thông tin của hộ này?")) {
     const res = await ApiService.editHousehold(data);
-    //console.log("editHouseHold");
+    
     if (res.success) {
+      
+      saveHistory(id, `Thay đổi địa chỉ từ "${dc}" đến "${dc2}"`);
       Saved(res.message);
       await delay(200);
       //alert("Lưu thành công!");
@@ -1116,7 +1187,7 @@ async function editHousehold(id) {
 }
 
 async function deleteHousehold(id) {
-  if (await confirmm("Xóa hộ khẩu này?", "Tất cả nhân khẩu sẽ bị xóa!", "warning")) {
+  if (await confirmm("Xóa hộ khẩu này?", "Thao tác này sẽ xoá đăng ký thường trú của toàn bộ thành viên trong hộ khỏi địa phương!", "warning")) {
     const res = await ApiService.deleteHousehold(id);
     if (res.success) {
       Saved(res.message);
@@ -1135,73 +1206,6 @@ async function deleteHousehold(id) {
 
 
 }
-
-// // TÁCH HỘ KHẨU (Logic UI phức tạp)
-// function showSplitHouseholdForm(hkId) {
-//   const hk = households.find(h => h.id === hkId);
-//   if (!hk) return;
-//   if (!hk.nhanKhau || hk.nhanKhau.length < 2) return alert("Hộ phải có ít nhất 2 người để tách.");
-
-//   let membersHk1 = [...hk.nhanKhau];
-//   let membersHk2 = [];
-
-//   const updateUI = () => {
-//     document.getElementById('hk1_members').innerHTML = membersHk1.map(m => `<div class="member-item" onclick="moveMemberToNew('${m.id}')">${m.ten} (${m.vaiTro}) -></div>`).join('');
-//     document.getElementById('hk2_members').innerHTML = membersHk2.map(m => `<div class="member-item" onclick="moveMemberToOld('${m.id}')"><- ${m.ten} (${m.vaiTro})</div>`).join('');
-//   };
-
-//   window.moveMemberToNew = (id) => {
-//     const idx = membersHk1.findIndex(m => m.id === id);
-//     if (idx > -1) { membersHk2.push(membersHk1[idx]); membersHk1.splice(idx, 1); updateUI(); }
-//   };
-//   window.moveMemberToOld = (id) => {
-//     const idx = membersHk2.findIndex(m => m.id === id);
-//     if (idx > -1) { membersHk1.push(membersHk2[idx]); membersHk2.splice(idx, 1); updateUI(); }
-//   };
-
-//   const contentHtml = `
-//     <div class="split-household-container">
-//       <div class="split-column">
-//         <h4>Hộ cũ (${hk.id})</h4>
-//         <div class="member-list" id="hk1_members"></div>
-//       </div>
-//       <div class="split-column">
-//         <h4>Hộ mới</h4>
-//         <div class="split-column-header"><input type="text" id="hk2_chuho" placeholder="Tên chủ hộ mới"></div>
-//         <div class="member-list" id="hk2_members" style="border-color: #2ecc71;"></div>
-//       </div>
-//     </div>
-//     <div class="form-actions">
-//       <button class="btn success" onclick="saveSplitHousehold('${hk.id}')">Lưu tách hộ</button>
-//       <button class="btn" onclick="cancelForm()">Hủy</button>
-//     </div>
-//   `;
-//   showDetailView(`Tách hộ khẩu: ${hk.id}`, contentHtml, true);
-//   updateUI();
-// }
-
-
-// async function saveSplitHousehold(oldId) {
-//   const newOwner = document.getElementById("hk2_chuho").value;
-//   if (!newOwner) return alert("Nhập tên chủ hộ mới!");
-
-//   const data = {
-//     chuHo: newOwner,
-//     ngayLapSo: new Date().toISOString().split('T')[0],
-//     diaChi: households.find(h => h.id === oldId).diaChi
-//   };
-
-//   const res = await ApiService.saveHouseholdSplit(data);//
-//   if (res.success) {
-//     Saved("Đã tách hộ mới thành công!");
-//     //alert("Đã tách hộ mới thành công!");
-//     await loadData();
-//     backDetailView();
-//   } else {
-//     fireError("Lỗi tách hộ!");
-//     // alert("Lỗi tách hộ!");
-//   }
-// }
 
 
 // ===== 2. LOGIC NHÂN KHẨU =====
@@ -1432,7 +1436,7 @@ async function saveResident(nkId, hkId = null) {
     //alert("Vui lòng điền đầy đủ các trường bắt buộc (*):\n");
     return;
   }
-  if (await confirmm("Lưu thay đổi ?")) {
+  if (await confirmm("Lưu thay đổi?")) {
     const res = await ApiService.saveResident(data);
     if (res.success) {
       Saved(res.message);
@@ -1488,7 +1492,9 @@ function addResidentForm( hkId ) {
         <div class="info-field"><label>Tỉnh/Thành phố:</label> <span id="info_tp">${hk.diaChi.tinh}</span></div>
       </div>
     </div>
-
+    <div class="section-divider">
+      <h4 style="color: #e74c3c; margin-top: 0;">Thông tin nhân khẩu</h4>
+    </div>
     <h4>Thông tin cơ bản</h4>
     <div class="form-grid-2">
         <div class="form-group"><label>Họ tên:<span style="color:red">*</span></label><input id="nk_ten" value=""></div>
@@ -1590,9 +1596,10 @@ async function addResidentToHousehold(hkId) {
     data.cccdNoiCap = null;
   }
   data.isNewBorn = isNewBorn;
-  if(await confirmm("Thêm nhân khẩu vào hộ khẩu hiện tại?")){
+  if(await confirmm("Thêm nhân khẩu này vào hộ khẩu hiện tại?")){
     const res = await ApiService.addResident(data);
     if(res.success){
+      saveHistory(hkId, `Thêm nhân khẩu ${data.hoTen}`);
       Saved(res.message);
       await delay(200);
       await loadData();
@@ -1664,7 +1671,7 @@ async function saveDeath(nkId) {
     fireAlert(null, "Vui lòng nhập đầy đủ thông tin!");
     return;
   }
-  if (await confirmm("Lưu thay đổi ?")) {
+  if (await confirmm("Xác nhận khai tử người này?")) {
     await ApiService.deleteAbsentResident(nkId);
     const res = await ApiService.saveDeath(data);
     if (res.success) {
@@ -1691,9 +1698,14 @@ async function saveDeath(nkId) {
 }
 
 async function deleteResident(id, hkId = null) {
-  if(await confirmm("Xoá đăng ký thường trú của người này?")){
-    const res = ApiService.deleteResident(id);
+  const r = residents.find(x => x.nkID == id);
+  if(!r) return;
+  console.log(r.IDHOKHAU);
+  if(await confirmm("Xoá đăng ký thường trú của người này?", "Người này sẽ không còn là người của địa phương")){
+    const res = await ApiService.deleteResident(id);
     if(res.success){
+      
+      saveHistory(hkId || r.IDHOKHAU, `${r.ten} chuyển đi nơi khác`);
       Saved(res.message);
       await delay(200);
       await loadData();
@@ -1810,11 +1822,12 @@ function showTempTTForm(id){
     <div class="form-actions">
         <button class="btn success" onclick="saveTempTT(${id})">Lưu</button>
         <button class="btn" onclick="cancelForm()">Hủy</button>
+        <button class="btn danger" onclick="deleteTemp(${id})">Xoá đăng ký tạm vắng</button>
     </div>
   `
   showDetailView("Thay đổi thông tin tạm trú", contentHtml, true);
 }
-async function saveTempTT(id) {
+async function saveTempTT(id) {//thay đổi thông tin tạm trú
   const v = id => document.getElementById(id)?.value.trim();
   const data = {
     id: id,
@@ -1885,8 +1898,8 @@ function showTempForm(id = null) {
     
     
     <div class="form-grid-2">
-        <div class="form-group"><label>Trình độ học vấn:<span style="color:red">*</span></label><input id="tmp_hocvan" value="${t.trinhDoHocVan || ''}"></div>
-        <div class="form-group"><label>Nghề nghiệp:<span style="color:red">*</span></label><input id="tmp_nghe" value="${t.nghe || ''}"></div>
+        <div class="form-group"><label>Trình độ học vấn:</label><input id="tmp_hocvan" value="${t.trinhDoHocVan || ''}"></div>
+        <div class="form-group"><label>Nghề nghiệp:</label><input id="tmp_nghe" value="${t.nghe || ''}"></div>
         <div class="form-group full-width"><label>Nơi làm việc:</label><input id="tmp_noilamviec" value="${t.noiLamViec || ''}"></div>
     </div>
     <div class="form-group full-width"><label>Địa chỉ thường trú:<span style="color:red">*</span></label><input id="tmp_tt" value="${t.diaChiThuongTru || ''}"></div>
@@ -1955,8 +1968,8 @@ async function saveTemp(id, isEdit) {
     { field: data.tonGiao, name: 'Tôn giáo' },
     { field: data.quocTich, name: 'Quốc tịch' },
     { field: data.queQuan, name: 'Nguyên quán' },
-    { field: data.trinhDoHocVan, name: 'Trình độ học vấn' },
-    { field: data.nghe, name: 'Nghề nghiệp' },
+    // { field: data.trinhDoHocVan, name: 'Trình độ học vấn' },
+    // { field: data.nghe, name: 'Nghề nghiệp' },
     { field: data.diaChiThuongTru, name: 'Địa chỉ thường trú' },
     { field: data.noiTamTru, name: 'Nơi tạm trú' },
     { field: data.ngayDangKy, name: 'Ngày đăng ký' },
@@ -1988,7 +2001,7 @@ async function saveTemp(id, isEdit) {
 }
 
 async function deleteTemp(id) {
-  if (await confirmm("Xóa tạm trú của người này?", "Người này trở về nơi đăng kí thường trú")) {
+  if (await confirmm("Xóa tạm trú của người này?", "Người này sẽ trở về nơi đăng kí thường trú")) {
     const res = await ApiService.deleteTempResident(id);
     if (res.success) {
       Saved(res.message);
@@ -2208,7 +2221,7 @@ async function saveAbsent(id, isEdit) {
 
 async function deleteAbsent(id) {
   
-  if (await confirmm("Xóa tạm vắng?")) {
+  if (await confirmm("Xóa tạm vắng?", "Người này đã quay lại địa phương?")) {
     const res = await ApiService.deleteAbsentResident(id);
     if (res.success) {
 
@@ -2481,7 +2494,7 @@ async function addReward() {
     ngayTao: document.getElementById('rw_ngayTao').value,
     ghiChu: document.getElementById('rw_gc').value
   }
-  if (await confirmm("Tạo đợt thưởng mới")) {
+  if (await confirmm("Tạo đợt thưởng mới?")) {
     const res = await ApiService.addReward(data);
     //console.log(res);
     if (res.success) {
@@ -2657,7 +2670,7 @@ async function updateStats(filterType = 'gender') {
   data.forEach((val, index) => {
     const barHeight = (val / maxVal) * 100;
     chart.innerHTML += `
-      <div class='bar' style='height:${barHeight * 0.9}%'>
+      <div class='bar' style='height:${barHeight}%'>
         <span>${val}</span>
       </div>`;
     chartLabels.innerHTML += `<div class='bar-label'>${labels[index]}</div>`;
@@ -2872,7 +2885,6 @@ async function showSplitHouseholdForm(hkId) {
     </div>
   `
   showDetailView(`Tách hộ khẩu: ${hk.id}`, contentHtml, true);
-  await delay(100);
   
   render();
   initDragEvents();
@@ -2901,9 +2913,12 @@ async function saveSplitHousehold(hkid) {
     }
   }
   
-  if(await confirmm("Xác nhận tách hộ khẩu")){
+  if(await confirmm("Xác nhận tách hộ khẩu này?")){
     const res = await ApiService.splitHousehold(data);
     if(res.success){
+      saveHistory(hkid, `${state.newOwner.ten}${(state.newMembers || []).map(m => `, ${m.ten}`).join('')} đã tách thành hộ mới`);
+      saveHistory(res.newHkId, 'Tạo hộ mới');
+      saveHistory(res.newHkId, `Thêm nhân khẩu: ${state.newOwner.ten}${(state.newMembers || []).map(m => `, ${m.ten}`).join('')}`);
       Saved(res.message);
       await delay(200);
       //hide = 0;
@@ -3096,4 +3111,185 @@ function createMemberItem(member, type) {
 window.updateRelation = function (id, value) {
   const member = state.newMembers.find(m => m.nkID === id);
   if (member) member.newRole = value;
+}
+
+function changeOwner(hkId){
+  const hk = households.find(x => x.realId ===hkId);
+  state = {
+    oldOwner: hk.nhanKhau.find(m => m.nkID === hk.idCH),
+    oldMembers: [...hk.nhanKhau], // Danh sách người ở hộ cũ
+    newOwner: null,                  // Người làm chủ hộ mới
+    newMembers: []                   // Danh sách thành viên ở hộ mới
+  };
+  if(!hk) return;
+  const optionsHtml = state.oldMembers.map(member => {
+        if(member.nkID != hk.idCH) return `<option value="${member.nkID}">${member.ten}</option>`;
+        return '';
+
+    }).join('');
+
+  const contentHtml = `
+    <div class = "change-household-container">
+      <div class="card card-old">
+        <div class="card-title">Hộ khẩu hiện tại </div>
+        
+        <div class="form-group">
+          <label>Chủ hộ:</label>
+          <input type="text" style="height:42px" class="form-control" value="${hk.chuHo }" readonly class="readonly-field">
+        </div>
+
+        <label>Danh sách thành viên:</label>
+        <div id="old-list" class="member-list-zone">     </div>
+      </div>
+
+      <div class="card card-new">
+        <div class="card-title">Hộ khẩu mới</div>
+
+        <div class="form-group">
+            <label>Chủ hộ:</label>
+            
+            <select onchange="eventChangeOwner(this.value)" id="new-owner-zone" class="form-control" style="height: 42px; display: flex; align-items: center; color: #000000ff; appearance: none;">
+                <option value="">-- Chọn chủ hộ --</option>
+                ${optionsHtml}
+            </select>
+              
+        </div>
+
+        <label>Các thành viên khác:</label>
+        <div id="new-list" class="member-list-zone">
+          <div class="empty-placeholder">Vui lòng chọn chủ hộ trước</div>
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+        <button class="btn success" onclick="saveChangeOwner(${hk.realId})">Lưu</button>
+        <button class="btn" onclick="cancelForm()">Hủy</button>
+    </div>
+  `
+
+  showDetailView(`Thay đổi chủ hộ`, contentHtml, true);
+  renderChangeOwner();
+}
+
+function renderChangeOwner(){
+  const oldListEl = document.getElementById('old-list');
+  const newListEl = document.getElementById('new-list');
+  const newOwnerZone = document.getElementById('new-owner-zone');
+
+  oldListEl.innerHTML = '';
+  state.oldMembers.forEach(m => {
+    if(m.nkID!== state.oldOwner.nkID) oldListEl.appendChild(createMemberItem2(m, 'old'));
+  });
+
+  newListEl.innerHTML = '';
+  if (state.newMembers.length === 0) {
+    newListEl.innerHTML = '<div class="empty-placeholder">Vui lòng chọn chủ hộ trước</div>';
+  } else {
+    state.newMembers.forEach(m => {
+      if(m.nkID!== state.newOwner?.nkID ) newListEl.appendChild(createMemberItem2(m, 'new'));
+    });
+  }
+}
+
+
+function createMemberItem2(member, type) {
+  const div = document.createElement('div');
+  div.className = 'member-item';
+
+  // Nếu là ô chủ hộ, thêm class đặc biệt để đổi giao diện
+  if (type === 'owner') {
+    div.classList.add('owner-style');
+  }
+
+  
+
+  
+  // Nội dung bên trái (Tên & Quan hệ cũ)
+  let leftContent = `
+        <div class="member-info">
+            <span class="member-name">${member.ten}</span>
+        </div>
+    `;//<span class="member-rel">Quan hệ với chủ hộ: ${member.vaiTro}</span>
+
+  // Nội dung bên phải
+  let rightContent = '';
+  if (type === 'new') {
+    // Dropdown chọn quan hệ
+    rightContent = `
+            <select class="new-rel-select" onchange="updateRelation(${member.nkID}, this.value)" onclick="event.stopPropagation()">
+                <option value="" disabled ${!member.newRole ? 'selected' : ''}>-- Chọn --</option>
+                <option value="Vợ" ${member.newRole === 'Vợ' ? 'selected' : ''}>Vợ</option>
+                <option value="Chồng" ${member.newRole === 'Chồng' ? 'selected' : ''}>Chồng</option>
+                <option value="Con" ${member.newRole === 'Con' ? 'selected' : ''}>Con</option>
+                <option value="Bố/Mẹ" ${member.newRole === 'Bố/Mẹ' ? 'selected' : ''}>Bố/Mẹ</option>
+                <option value="Anh/Chị/Em" ${member.newRole === 'Anh/Chị/Em' ? 'selected' : ''}>Anh/Chị/Em</option>
+            </select>
+        `;
+  } else if (type === 'owner') {
+    // Tag chủ hộ mới (nhỏ gọn hơn)
+    rightContent = `<span style="background:#e8f5e9; color:#2e7d32; padding: 2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">Chủ hộ mới</span>`;
+  }
+  else{
+    rightContent = `<span style="background:#e8f5e9; color:var(--primary-color); padding: 2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">${member.vaiTro}</span>`;
+  }
+
+  div.innerHTML = leftContent + rightContent;
+  return div;
+}
+
+function eventChangeOwner(newOwnerId){
+  //console.log(newOwnerId);
+  
+  const newCH = state.oldMembers.find(x => x.nkID == newOwnerId) || null;
+  //console.log(newCH);
+  state.newOwner = newCH;
+  if(!newOwnerId){
+    state.newMembers = [];
+  }
+  else state.newMembers = state.oldMembers.filter(x => x.nkID != newOwnerId);
+
+  renderChangeOwner();
+}
+
+async function saveChangeOwner(hkId) {
+  if (!state.newOwner) {
+    fireAlert("Chưa có chủ hộ mới","Vui lòng chọn chủ hộ cho hộ mới!");
+    return;
+  }
+  const missingRelation = state.newMembers.find(m => !m.newRole || m.newRole === "");
+  if (missingRelation) {
+    fireAlert(`Lỗi: Vui lòng chọn quan hệ cho thành viên: ${missingRelation.ten}`);
+    return;
+  }
+
+  data = {
+    idHK: hkId,
+    newOwnerId: state.newOwner.nkID,
+    tv: state.newMembers.map(m => ({
+      id: m.nkID,
+      vaiTro: m.newRole
+    }))
+  }
+  if(await confirmm("Xác nhận đổi chủ hộ?",`${state.newOwner.ten} sẽ làm chủ hộ mới`)){
+    const res = await ApiService.saveChangeOwner(data);
+    if(res.success){
+      saveHistory(hkId, `Thay đổi chủ hộ từ "${state.oldOwner.ten}" thành "${state.newOwner.ten}"`);
+      Saved(res.message);
+      await delay(200);
+      await loadData();
+
+      showHouseholdBookDetail(hkId);
+    }
+    else{
+      fireError(res.message);
+    }
+  }
+}
+
+async function saveHistory(idHK, thongtin) {
+  const data = {
+    id: idHK,
+    tt: thongtin
+  }
+  await ApiService.saveHistory(data);
 }

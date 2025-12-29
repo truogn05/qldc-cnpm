@@ -11,12 +11,26 @@
   
   <!-- Trang Đăng nhập -->
   <div id="loginPage">
-    <div class="login-box"> 
-      <h2>Đăng nhập hệ thống</h2>
-      <input type="text" id="username" placeholder="Tên đăng nhập">
-      <input type="password" id="password" placeholder="Mật khẩu">
-      <button id="loginBtn">Đăng nhập</button>
-      <p class="error-msg" id="errorMsg"></p>
+    <!-- Intro Screen Background -->
+    <div id="introBackground" class="intro-background"></div>
+    
+    <!-- Intro Text (shown initially) -->
+    <div id="introText" class="intro-text">
+      
+      <h1 class="intro-title">Tổ dân phố 7</h1>
+      <h1 class="intro-title">Phường La Khê</h1>
+      <p class="intro-subtitle">Hệ thống quản lý dân cư</p>
+    </div>
+    
+    <!-- Login Modal (hidden initially) -->
+    <div id="loginModal" class="login-modal">
+      <div class="login-box"> 
+        <h2>Đăng nhập hệ thống</h2>
+        <input type="text" id="username" placeholder="Tên đăng nhập">
+        <input type="password" id="password" placeholder="Mật khẩu">
+        <button id="loginBtn">Đăng nhập</button>
+        <p class="error-msg" id="errorMsg"></p>
+      </div>
     </div>
   </div>
 
@@ -90,7 +104,7 @@
                 <!-- Sửa lỗi 5: Cập nhật cột -->
                 <tr>
                   <th>STT</th>
-                  <th>Họ và tên</th>
+                  <th style="width : 333px">Họ và tên</th>
                   <th>Ngày sinh</th>
                   <th>Giới tính</th>
                   <th>Ghi chú</th>
@@ -144,6 +158,7 @@
                 <button class="btn small primary active" onclick="updateStats('gender')">Giới tính</button>
                 <button class="btn small primary" onclick="updateStats('ageGroup')">Độ tuổi</button>
                 <button class="btn small primary" onclick="updateStats('residence')">Tạm trú/vắng</button>
+
               </div>
             </div>
             <div class="card-stats" id="statsSummary"></div>
@@ -177,6 +192,21 @@
           <button id="confirmModalConfirm" class="btn small danger">Hủy và Thoát</button>
         </div>
       </div>
+    </div>
+
+    <!-- Modal thao tác -->
+    <div id="actionModal" class="action-modal">
+        <div class="action-modal-content">
+            <div class="modal-header">
+                <h3 id="actionModalTitle">CHỌN THAO TÁC</h3>
+            </div>
+            <p class="modal-desc" id="act-msg"></p>
+<!-- Vui lòng chọn một hành động bên dưới để tiếp tục. -->
+            <div class="action-list" id="actionList" onclick="handleActionClick(event)">
+                
+                
+            </div>
+        </div>
     </div>
 
   </div>

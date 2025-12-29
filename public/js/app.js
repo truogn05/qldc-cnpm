@@ -47,7 +47,7 @@ const ApiService = {
   },
   editHousehold: async (Data) => {
     //const id =data.id;
-    const {id, ...data} = Data;
+    const { id, ...data } = Data;
     try {
       //console.log(data);
       const res = await fetch(`/api/households/${id}`, {
@@ -70,7 +70,7 @@ const ApiService = {
   },
   saveChangeOwner: async (Data) => {
     //const id =data.id;
-    const {id, ...data} = Data;
+    const { id, ...data } = Data;
     try {
       //console.log(data);
       const res = await fetch(`/api/households/owner/${id}`, {
@@ -91,7 +91,7 @@ const ApiService = {
       return await res.json();
     } catch (e) { return { success: false, message: e.message }; }
   },
-  
+
   deleteHousehold: async (id) => {
     try {
       const res = await fetch(`/api/households/${id}`, { method: 'DELETE' });
@@ -168,7 +168,7 @@ const ApiService = {
     } catch (e) { return { success: false }; }
   },
   saveTempTT: async (Data) => {
-    const {id, ...data} = Data;
+    const { id, ...data } = Data;
     try {
       const res = await fetch(`/api/temp-residents/${id}`, {
         method: 'PUT',
@@ -340,6 +340,60 @@ const passwordInput = document.getElementById("password");
 const errorMsg = document.getElementById("errorMsg");
 const logoutBtn = document.getElementById("logoutBtn");
 
+// Intro screen elements
+const introBackground = document.getElementById("introBackground");
+const introText = document.getElementById("introText");
+const loginModal = document.getElementById("loginModal");
+const loginBox = document.querySelector(".login-box");
+
+// ===== INTRO SCREEN INTERACTION =====
+// Click anywhere on intro screen to show login modal
+loginPage.addEventListener("click", function (e) {
+  // Only open modal if it's not already open
+  if (!loginPage.classList.contains("modal-open")) {
+    loginPage.classList.add("modal-open");
+    loginPage.style.cursor = "default";
+  }
+  // If modal is open and click is outside login box
+  else if (!loginBox.contains(e.target)) {
+    // Only close if both inputs are empty
+    const usernameEmpty = usernameInput.value.trim() === "";
+    const passwordEmpty = passwordInput.value.trim() === "";
+
+    if (usernameEmpty && passwordEmpty) {
+      closeLoginModal();
+    }
+  }
+});
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    // Chỉ xử lý khi modal đang mở
+    if (loginPage.classList.contains("modal-open")) {
+      closeLoginModal();
+      // const usernameEmpty = usernameInput.value.trim() === "";
+      // const passwordEmpty = passwordInput.value.trim() === "";
+
+      // // Chỉ close khi chưa nhập dữ liệu
+      // if (usernameEmpty && passwordEmpty) {
+      //   closeLoginModal();
+      // }
+    }
+  }
+});
+
+// Prevent click inside login box from closing the modal
+loginBox.addEventListener("click", function (e) {
+  e.stopPropagation();
+});
+
+// Function to close login modal and return to intro
+function closeLoginModal() {
+  loginPage.classList.remove("modal-open");
+  loginPage.style.cursor = "pointer";
+  // Clear error message when closing
+  errorMsg.textContent = "";
+}
+
 const mainView = document.getElementsByClassName("main-content-area")
 const mainHeader = document.getElementById("mainHeader");
 const headerTitle = document.getElementById("headerTitle");
@@ -355,6 +409,9 @@ const confirmModal = document.getElementById("confirmModal");
 const confirmModalMessage = document.getElementById("confirmModalMessage");
 let confirmModalConfirm = document.getElementById("confirmModalConfirm");
 const confirmModalCancel = document.getElementById("confirmModalCancel");
+
+const actionModal = document.getElementById("actionModal");
+const actionList = document.getElementById("actionList");
 
 let householdHTML = '';
 let residentHTML = '';
@@ -420,7 +477,7 @@ async function loadAbsents() {
   login = 0;
   detailHistory = [];
   try {
-    
+
     absentResidents = await ApiService.getAbsentResidents() || [];
 
     isDetailDirty = false;
@@ -438,7 +495,7 @@ async function loadRewards() {
   login = 0;
   detailHistory = [];
   try {
-    
+
     rewards = await ApiService.getRewards() || [];
 
     isDetailDirty = false;
@@ -558,8 +615,8 @@ async function navigateTo(sectionId) {
 }
 
 async function forceNavigateTo(sectionId) {
-  if(currentSection != sectionId) showLoading();
- 
+  if (currentSection != sectionId) showLoading();
+
   //closeLoading();
   // mainView.style.display = "flex";
   // mainViewContent.scrollTop = 0;
@@ -573,9 +630,9 @@ async function forceNavigateTo(sectionId) {
     mainView[0].scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
-  
+
   login = 1;
-  
+
   //console.log("forceNAV")
 
   updateHeader(sectionId);
@@ -613,7 +670,7 @@ async function forceNavigateTo(sectionId) {
     case 'stats': await updateStats('gender'); break;
     case 'rewards': await renderRewards(); break;
   }
-  
+
   console.log("render xong");
   //await delay(5000);
 
@@ -836,13 +893,14 @@ async function renderHouseholds(list = households) {
           <td>${h.nhanKhau ? h.nhanKhau.length : 0}</td>
           <td >
             <button class='btn small primary' onclick='showHouseholdBookDetail(${h.realId})'>Chi tiết</button>
+            <button class='btn small success' onclick='showActionModalHH(${h.realId})'>Khác</button>
           </td>
         </tr>`;
 
-        // <button class='btn small success' onclick='editHouseholdForm(${h.realId})'>Sửa</button>
-        //     <button class='btn small second'  onclick='showSplitHouseholdForm(${h.realId})'>Tách hộ</button>
-        //     <button class='btn small danger' onclick='deleteHousehold(${h.realId})'>Xoá</button>
-        //<button class="btn small success" onclick='addResidentForm(${h.realId})'>Thêm nhân khẩu mới</button>
+    // <button class='btn small success' onclick='editHouseholdForm(${h.realId})'>Sửa</button>
+    //     <button class='btn small second'  onclick='showSplitHouseholdForm(${h.realId})'>Tách hộ</button>
+    //     <button class='btn small danger' onclick='deleteHousehold(${h.realId})'>Xoá</button>
+    //<button class="btn small success" onclick='addResidentForm(${h.realId})'>Thêm nhân khẩu mới</button>
   });
 
   await delay(100);
@@ -862,7 +920,7 @@ async function showHouseholdBookDetail(realId) {
   }
   const history = await ApiService.getHouseholdHistory(realId);
   let historyContent = '';
-  if(history){
+  if (history) {
     historyContent = (history || []).map(ls => `
       <div class="info-item-row full-width"><label style="font-size: 14px">Ngày: ${formatDate(ls.ngay)}</label><span style="font-size: 16px">${ls.tt}</span></div>
       `).join('');
@@ -872,41 +930,42 @@ async function showHouseholdBookDetail(realId) {
       <div style="display: flex; justify-content: space-between; align-items: flex-start;">
         <h4>${nk.ten} (${nk.vaiTro})</h4>
         <div>
-          ${nk.ghiChu == 'Đã qua đời' ? '':`
-            <button class="btn small success" onclick="showResidentForm(${nk.nkID}, ${realId})">Thay đổi thông tin</button>
-            <button class="btn small second" onclick="showAbsentForm(${nk.nkID})">${nk.ghiChu == 'Tạm vắng' ? 'Sửa thông tin tạm vắng': 'Đăng ký tạm vắng'}</button>
-            <button class="btn small third" onclick="declareDeathForm(${nk.nkID})">Khai tử</button>  
-            `}
-          <button class="btn small danger" onclick="deleteResident(${nk.nkID})">Xoá thường trú</button>  
-          
-          
+          <button class="btn small success" onclick='showActionModalNK(${nk.nkID}, 1)'>Các thao tác</button>
         </div>
       </div>
       <div class="info-vertical-list">
         <div class="info-item-row"><label>Ngày sinh</label><span>${formatDate(nk.ngaySinh)}</span></div>
         <div class="info-item-row"><label>Giới tính</label><span>${nk.gioiTinh}</span></div>
 
-        <div class="info-item-row"><label>Nơi sinh</label><span>${nk.noiSinh }</span></div>
-        <div class="info-item-row"><label>Nguyên quán</label><span>${nk.queQuan }</span></div>
+        <div class="info-item-row"><label>Nơi sinh</label><span>${nk.noiSinh}</span></div>
+        <div class="info-item-row"><label>Nguyên quán</label><span>${nk.queQuan}</span></div>
 
         <div class="info-item-row"><label>CCCD</label><span>${nk.cccd || 'Mới sinh'}</span></div>
 
-        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(nk.cccdNgayCap) == 'N/A' ? " " : formatDate(nk.cccdNgayCap) }</span></div>
-        <div class="info-item-row"><label>Nơi cấp CCCD</label><span>${nk.cccdNoiCap || ' '}</span></div>
+        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(nk.cccdNgayCap) ||'N/A' }</span></div>
+        <div class="info-item-row"><label>Nơi cấp CCCD</label><span>${nk.cccdNoiCap || 'N/A'}</span></div>
 
-        <div class="info-item-row"><label>Dân tộc</label><span>${nk.danToc }</span></div>
-        <div class="info-item-row"><label>Tôn giáo</label><span>${nk.tonGiao }</span></div>
+        <div class="info-item-row"><label>Dân tộc</label><span>${nk.danToc}</span></div>
+        <div class="info-item-row"><label>Tôn giáo</label><span>${nk.tonGiao}</span></div>
 
-        <div class="info-item-row"><label>Quốc tịch</label><span>${nk.quocTich }</span></div>
-        <div class="info-item-row"><label>Nghề nghiệp</label><span>${nk.nghe || ' '}</span></div>
-        <div class="info-item-row"><label>Nơi làm việc</label><span>${nk.noiLamViec || ' '}</span></div>
+        <div class="info-item-row"><label>Quốc tịch</label><span>${nk.quocTich}</span></div>
+        <div class="info-item-row"><label>Nghề nghiệp</label><span>${nk.nghe || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nơi làm việc</label><span>${nk.noiLamViec || 'N/A'}</span></div>
         <div class="info-item-row"><label>Địa chỉ thường trú trước khi chuyển đến</label><span>${nk.diaChiTruoc || 'Mới sinh'}</span></div>
         <div class="info-item-row"><label>Ngày đăng kí thường chú</label><span>${formatDate(nk.ngayDKTT)}</span></div>
-        
+
+        <div class="info-item-row full-width"><label>Địa chỉ thường trú</label><span>${nk.diaChiThuongTru || 'N/A'}</span></div>
+        <div class="info-item-row full-width"><label>Địa chỉ hiện nay</label><span>${nk.noiOHienTai || 'N/A'}</span></div>
         <div class="info-item-row full-width"><label>Ghi chú</label><span>${nk.ghiChu || 'Không có'}</span></div>
       </div>
     </div>
   `).join('');
+  // ${nk.ghiChu == 'Đã qua đời' ? '':`
+  //         <button class="btn small success" onclick="showResidentForm(${nk.nkID}, ${realId})">Thay đổi thông tin</button>
+  //         <button class="btn small second" onclick="showAbsentForm(${nk.nkID})">${nk.ghiChu == 'Tạm vắng' ? 'Sửa thông tin tạm vắng': 'Đăng ký tạm vắng'}</button>
+  //         <button class="btn small third" onclick="declareDeathForm(${nk.nkID})">Khai tử</button>  
+  //         `}
+  //       <button class="btn small danger" onclick="deleteResident(${nk.nkID})">Xoá thường trú</button>  
 
   const contentHtml = `
     <h3 class="detail-name-title" style="text-align: center; border: none; margin-bottom: 5px;">SỔ HỘ KHẨU</h3>
@@ -937,21 +996,25 @@ async function showHouseholdBookDetail(realId) {
     </div>
 
     <div class="form-actions">
-      <button class="btn success" onclick='editHouseholdForm(${h.realId})'>Thay đổi thông tin hộ khẩu</button>
-      <button class="btn second" onclick='changeOwner(${h.realId})'>Thay đổi chủ hộ</button>
-      <button class="btn third" onclick='showSplitHouseholdForm(${h.realId})'>Tách hộ khẩu</button>
-      <button class="btn primary" onclick='addResidentForm(${h.realId})'>Thêm nhân khẩu mới</button>
-      <button class='btn danger' onclick='deleteHousehold(${h.realId})'>Xoá hộ khẩu</button>
+      <button class="btn primary" onclick='showActionModalHH(${realId}, 1)'>Thao tác</button>
+      
       
     </div>
   `;
+
   showDetailView(`Sổ hộ khẩu: ${h.id}`, contentHtml);
+
+  // <button class="btn success" onclick='editHouseholdForm(${h.realId})'>Thay đổi thông tin hộ khẩu</button>
+  //     <button class="btn second" onclick='changeOwner(${h.realId})'>Thay đổi chủ hộ</button>
+  //     <button class="btn third" onclick='showSplitHouseholdForm(${h.realId})'>Tách hộ khẩu</button>
+  //     <button class="btn primary" onclick='addResidentForm(${h.realId})'>Thêm nhân khẩu mới</button>
+  //     <button class='btn danger' onclick='deleteHousehold(${h.realId})'>Xoá hộ khẩu</button>
 }
-function addHouseholdForm(){
-  const title =  "Tạo hộ khẩu mới" ;
-    // <div class="section-divider">
-    //   <h4 style="color: #e74c3c; margin-top: 0; ">Thông tin cơ bản của hộ khẩu</h4>
-    // </div>
+function addHouseholdForm() {
+  const title = "Tạo hộ khẩu mới";
+  // <div class="section-divider">
+  //   <h4 style="color: #e74c3c; margin-top: 0; ">Thông tin cơ bản của hộ khẩu</h4>
+  // </div>
   const contentHtml = `
     <h4 style="color: #e74c3c; margin-top: 0; margin-bottom:15px; font-size: 16px; text-transform: uppercase;">Thông tin cơ bản của hộ khẩu</h4>
     <div class="form-grid-2">
@@ -1014,7 +1077,7 @@ function addHouseholdForm(){
   showDetailView(title, contentHtml, true);
 }
 
-async function addHousehold(){
+async function addHousehold() {
   const v = id => document.getElementById(id)?.value.trim();
 
   // danh sách field bắt buộc
@@ -1080,31 +1143,31 @@ async function addHousehold(){
       diaChiTruoc: v("ch_diaChiHienNay")
     }
   };
-  
-  if(await confirmm("Xác nhận tạo hộ khẩu mới?")){
+
+  if (await confirmm("Xác nhận tạo hộ khẩu mới?")) {
     const res = await ApiService.addHousehold(data);
 
     if (res.success) {
       saveHistory(res.hkId, "Tạo hộ khẩu mới");
       Saved(res.message);
       await delay(200);
-      
+
       await loadData();
 
       showHouseholdBookDetail(res.hkId);
-      
+
     } else {
-      
+
       fireError(res.message);
       //alert("Có lỗi xảy ra: " + (res.message || ""));
     }
   }
 }
-function editHouseholdForm(id ) {
+function editHouseholdForm(id) {
   const h = households.find(x => x.realId === id);
   const dc = `${h.diaChi.soNha}, ${h.diaChi.ngo}, ${h.diaChi.duong}, ${h.diaChi.phuong}, ${h.diaChi.quan}, ${h.diaChi.tinh}`;
-  const ch = residents.find(x => x.nkID === h.idCH) ;
-  const title =  "Thay đổi thông tin hộ khẩu" ;
+  const ch = residents.find(x => x.nkID === h.idCH);
+  const title = "Thay đổi thông tin hộ khẩu";
 
   const contentHtml = `
     <div class="household-info-display">
@@ -1140,7 +1203,7 @@ function editHouseholdForm(id ) {
     </div>
 
     <div class="form-actions">
-        <button class="btn success" onclick="editHousehold(${h.realId }, '${dc}')">Lưu</button>
+        <button class="btn success" onclick="editHousehold(${h.realId}, '${dc}')">Lưu</button>
         <button class="btn" onclick="cancelForm()">Hủy</button>
     </div>
   `;//thêm ngày đăng ký new Date().toISOString().split('T')[0]
@@ -1166,19 +1229,19 @@ async function editHousehold(id, dc = null) {
   //if (!data.chuHo) return fireAlert("Nhập tên chủ hộ!");
   if (await confirmm("Lưu thay đổi?", "Xác nhận thay đổi thông tin của hộ này?")) {
     const res = await ApiService.editHousehold(data);
-    
+
     if (res.success) {
-      
+
       saveHistory(id, `Thay đổi địa chỉ từ "${dc}" đến "${dc2}"`);
       Saved(res.message);
       await delay(200);
       //alert("Lưu thành công!");
-      
+
       await loadData();
       showHouseholdBookDetail(id);
       //backDetailView();
     } else {
-      
+
       fireError(res.message);
       //alert("Có lỗi xảy ra: " + (res.message || ""));
     }
@@ -1239,11 +1302,13 @@ async function renderResidents(list = residents) {
         <td>${p.ghiChu != "Chủ hộ" && p.ghiChu != null ? p.ghiChu : ''}</td>
         <td>
           <button class='btn small primary' onclick='showResidentDetail(${p.nkID})'>Chi tiết</button>
-          <button class='btn small danger' onclick='deleteResident(${p.nkID})'>Xoá</button>
+          <button class='btn small success' onclick='showActionModalNK(${p.nkID}, 1)'>Khác</button>
+          
         </td>
       </tr>
     `;
   });
+  //<button class='btn small danger' onclick='deleteResident(${p.nkID})'>Xoá</button>
 
   await delay(100);
   tb.innerHTML = temp;
@@ -1260,7 +1325,7 @@ async function showResidentDetail(id) {
   let dieContent = ''
   if (!r) return;
   const isDeath = r.ghiChu === 'Đã qua đời';
-  if(isDeath){
+  if (isDeath) {
     const dieInfo = await ApiService.getDeath(id);
     dieContent = `
       <div class="info-item-row full-width" style="border-top: 4px solid #e74c3c; margin-top: 10px; padding-top: 10px;"><label><strong>Ngày qua đời</strong></label><span><strong>${formatDate(dieInfo.ngayMat)}</strong></span></div>
@@ -1268,8 +1333,8 @@ async function showResidentDetail(id) {
       <div class="info-item-row full-width"><label>Lý do qua đời</label><span>${dieInfo.lyDo || 'N/A'}</span></div>
     `
   }
-  let absContent ='';
-  if(r.ghiChu ==='Tạm vắng'){
+  let absContent = '';
+  if (r.ghiChu === 'Tạm vắng') {
     const abs = absentResidents.find(x => x.nkID === id);
     absContent = `
       <div class="info-item-row full-width" style="border-top: 4px solid #e74c3c; margin-top: 10px; padding-top: 10px;"><label><strong>Nơi chuyển đến</strong></label><span><strong>${abs.noiChuyenDen}</strong></span></div>
@@ -1278,7 +1343,7 @@ async function showResidentDetail(id) {
       <div class="info-item-row full-width"><label>Lý do</label><span>${abs.lyDo || 'N/A'}</span></div>  
     `
   }
-  
+
 
   const contentHtml = `
     <h3 class="detail-name-title">${r.ten}</h3>
@@ -1321,27 +1386,27 @@ async function showResidentDetail(id) {
         ${absContent}
         ${dieContent}
     </div>
-    ${isDeath ? `
-      <p class="muted">Không thể thực hiện các thao tác thay đổi thông tin do người này đã qua đời</p>
-      ` : `
-      <div class="form-actions">
-        <button class="btn success" onclick='showResidentForm(${r.nkID})'>Thay đổi thông tin nhân khẩu</button>
-        <button class="btn second" onclick='showAbsentForm( ${r.nkID} )'> ${r.ghiChu === 'Tạm vắng' ? "Thay đổi thông tin tạm vắng" : "Đăng kí tạm vắng"} </button>
-        <button class='btn danger' onclick='declareDeathForm(${r.nkID})'>Khai tử</button>
-      </div>  
-      `}
+    
+    <div class="form-actions">
+      <button class="btn primary" onclick='showActionModalNK(${r.nkID})'>Các thao tác</button>
+      
+    </div>  
+      
     
     `;
   showDetailView("Chi tiết nhân khẩu", contentHtml);
+  // <button class="btn success" onclick='showResidentForm(${r.nkID})'>Thay đổi thông tin nhân khẩu</button>
+  // <button class="btn second" onclick='showAbsentForm( ${r.nkID} )'> ${r.ghiChu === 'Tạm vắng' ? "Thay đổi thông tin tạm vắng" : "Đăng kí tạm vắng"} </button>
+  // <button class='btn danger' onclick='declareDeathForm(${r.nkID})'>Khai tử</button>
 }
 
 function showResidentForm(nkId = null, hkId = null) {
   const isEdit = nkId !== null;//có nkid thì là edit
   let r = {};
-  
-  if (isEdit) r = residents.find(x => x.nkID === nkId) || {} ;
-  
-  if(!r){
+
+  if (isEdit) r = residents.find(x => x.nkID === nkId) || {};
+
+  if (!r) {
     return;
   }
   const contentHtml = `
@@ -1366,8 +1431,8 @@ function showResidentForm(nkId = null, hkId = null) {
     
     
     <div class="form-grid-2">
-        <div class="form-group"><label>Trình độ học vấn:<span style="color:red">*</span></label><input id="nk_hocvan" value="${r.trinhDoHocVan || ''}"></div>
-        <div class="form-group"><label>Nghề nghiệp:<span style="color:red">*</span></label><input id="nk_nghe" value="${r.nghe || ''}"></div>
+        <div class="form-group"><label>Trình độ học vấn:</label><input id="nk_hocvan" value="${r.trinhDoHocVan || ''}"></div>
+        <div class="form-group"><label>Nghề nghiệp:</label><input id="nk_nghe" value="${r.nghe || ''}"></div>
         <div class="form-group full-width"><label>Nơi làm việc:</label><input id="nk_noilamviec" value="${r.noiLamViec || ''}"></div>
     </div>
   
@@ -1442,23 +1507,23 @@ async function saveResident(nkId, hkId = null) {
       Saved(res.message);
       //alert("Lưu thành công");
       hide = 1;
-      if(currentSection == 'households'){
-        hide =1;
+      if (currentSection == 'households') {
+        hide = 1;
       }
       await delay(200);
       await loadData();
 
       //renderResidents();
       //residentHTML = '';
-      if(currentSection === 'households'){
+      if (currentSection === 'households') {
         showHouseholdBookDetail(hkId);
-        return ;
+        return;
       }
-      if(currentSection === 'residence_absent'){
+      if (currentSection === 'residence_absent') {
         showAbsentDetail(nkId);
         return;
       }
-      if(currentSection === 'residence_temp'){
+      if (currentSection === 'residence_temp') {
         showTempDetail(nkId);
         return;
       }
@@ -1469,13 +1534,13 @@ async function saveResident(nkId, hkId = null) {
     }
     else {
       fireError(res.message);
-      
+
     }
 
   }
 }
 
-function addResidentForm( hkId ) {
+function addResidentForm(hkId) {
   const hk = households.find(h => h.realId === hkId);
 
   const contentHtml = `
@@ -1503,7 +1568,7 @@ function addResidentForm( hkId ) {
         <div class="form-group"><label>Số điện thoại:</label><input id="nk_sdt" value=""></div>
         <div class="form-group"><label>Email:</label><input type="email" id="nk_email" value=""></div>
         <div class="form-group"><label>Nơi sinh:<span style="color:red">*</span></label><input id="nk_noisinh" value=""></div>
-        <div class="form-group"><label>Số CCCD:<span style="color:red">*</span></label><input id="nk_cccd" value=""></div>
+        <div class="form-group"><label>Số CCCD:<span style="color:red">*</span></label><input id="nk_cccd" value="" placeholder='Nhập "Mới sinh" hoặc số CCCD nếu có'></div>
     </div>
     <div class="form-grid-2">
         <div class="form-group"><label>Ngày cấp:<span style="color:red">*</span></label><input type="date" id="nk_cccd_nc" value=""></div>
@@ -1520,7 +1585,7 @@ function addResidentForm( hkId ) {
         <div class="form-group"><label>Nghề nghiệp:</label><input id="nk_nghe" value=""></div>
         <div class="form-group full-width"><label>Nơi làm việc:</label><input id="nk_noilamviec" value=""></div>
     </div>
-    <div class="form-group full-width"><label>Nơi thường trú hiện nay:<span style="color:red">*</span></label><input id="nk_noht" value="" ></div>
+    <div class="form-group full-width"><label>Nơi thường trú hiện nay:<span style="color:red">*</span></label><input id="nk_noht" value="" placeholder='Nhập "Mới sinh" nếu là lần đầu đăng ký thường trú'></div>
     <div class="form-group full-width"><label>Quan hệ với chủ hộ:<span style="color:red">*</span></label><input id="nk_qhvch" value="" ></div>
 
 
@@ -1530,8 +1595,8 @@ function addResidentForm( hkId ) {
       <button class="btn" onclick="cancelForm()">Hủy</button>
     </div>
     `;
-  showDetailView( "Thêm nhân khẩu", contentHtml, true);
-  
+  showDetailView("Thêm nhân khẩu", contentHtml, true);
+
 }
 async function addResidentToHousehold(hkId) {
   const v = id => document.getElementById(id)?.value.trim();
@@ -1596,16 +1661,16 @@ async function addResidentToHousehold(hkId) {
     data.cccdNoiCap = null;
   }
   data.isNewBorn = isNewBorn;
-  if(await confirmm("Thêm nhân khẩu này vào hộ khẩu hiện tại?")){
+  if (await confirmm("Thêm nhân khẩu này vào hộ khẩu hiện tại?")) {
     const res = await ApiService.addResident(data);
-    if(res.success){
+    if (res.success) {
       saveHistory(hkId, `Thêm nhân khẩu ${data.hoTen}`);
       Saved(res.message);
       await delay(200);
       await loadData();
       showHouseholdBookDetail(hkId);
     }
-    else{
+    else {
       fireError("Có lỗi xảy ra");
     }
   }
@@ -1672,14 +1737,15 @@ async function saveDeath(nkId) {
     return;
   }
   if (await confirmm("Xác nhận khai tử người này?")) {
-    await ApiService.deleteAbsentResident(nkId);
+    //ApiService.deleteAbsentResident(nkId);
     const res = await ApiService.saveDeath(data);
     if (res.success) {
-      
+
       Saved(res.message);
       await delay(200);
       //alert("Lưu thành công");
       hide = 1;
+      notNav = 1;
       await loadData();
 
       showResidentDetail(nkId);
@@ -1699,22 +1765,22 @@ async function saveDeath(nkId) {
 
 async function deleteResident(id, hkId = null) {
   const r = residents.find(x => x.nkID == id);
-  if(!r) return;
+  if (!r) return;
   console.log(r.IDHOKHAU);
-  if(await confirmm("Xoá đăng ký thường trú của người này?", "Người này sẽ không còn là người của địa phương")){
+  if (await confirmm("Xoá đăng ký thường trú của người này?", "Người này sẽ không còn là người của địa phương", "warning")) {
     const res = await ApiService.deleteResident(id);
-    if(res.success){
-      
+    if (res.success) {
+
       saveHistory(hkId || r.IDHOKHAU, `${r.ten} chuyển đi nơi khác`);
       Saved(res.message);
       await delay(200);
       await loadData();
-      if(currentSection === 'households'){
+      if (currentSection === 'households') {
         showHouseholdBookDetail(hkId);
       }
 
     }
-    else{
+    else {
       fireError(res.message);
     }
   }
@@ -1746,11 +1812,12 @@ async function renderTemp(list = tempResidents) {
       <td>${actualIndex}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.queQuan}</td><td style="text-align: right">${t.thoiHanTamTru}</td>
       <td style="text-align: center">
           <button class='btn small primary' onclick="showTempDetail(${t.nkID})">Chi tiết</button>
-          <button class='btn small success' onclick="showTempTTForm(${t.nkID})">Sửa</button>
-          <button class='btn small danger' onclick="deleteTemp(${t.nkID})">Xóa</button>
+          <button class='btn small success' onclick="showActionModalTemp(${t.nkID})">Khác</button>
       </td>
     </tr>`;
   });
+  // <button class='btn small success' onclick="showTempTTForm(${t.nkID})">Sửa</button>
+  //         <button class='btn small danger' onclick="deleteTemp(${t.nkID})">Xóa</button>
 
   await delay(100);
   tb.innerHTML = temp;
@@ -1787,15 +1854,18 @@ function showTempDetail(id) {
         <div class="info-item-row full-width"><label>Lý do</label><span>${t.lyDo || 'N/A'}</span></div>
     </div>
     <div class="form-actions">
-      <button class="btn success" onclick="showTempForm(${t.nkID})">Thay đổi thông tin nhân khẩu</button>
-      <button class="btn second" onclick="showTempTTForm(${t.nkID})">Thay đổi thông tin tạm trú</button>
+      <button class='btn small success' onclick="showActionModalTemp(${t.nkID})">Các thao tác</button>
+      
     </div>
         `;
+
+  // <button class="btn success" onclick="showTempForm(${t.nkID})">Thay đổi thông tin nhân khẩu</button>
+  //   <button class="btn second" onclick="showTempTTForm(${t.nkID})">Thay đổi thông tin tạm trú</button>
   showDetailView("Chi tiết tạm trú", contentHtml);
 }
-function showTempTTForm(id){
+function showTempTTForm(id) {
   let t = tempResidents.find(x => x.nkID === id);
-  if(!t) return;
+  if (!t) return;
   const contentHtml = `
     <div class="resident-info-display">
       <h4>Thông tin người đăng ký</h4>
@@ -1849,13 +1919,13 @@ async function saveTempTT(id) {//thay đổi thông tin tạm trú
     return;
   }
 
-  if (await confirmm( "Lưu thay đổi?" )) {
+  if (await confirmm("Lưu thay đổi?")) {
     const res = await ApiService.saveTempTT(data);
     if (res.success) {
       Saved(res.message);
       await delay(200);
       //alert("Lưu thành công");
-      
+
       await loadTemps();
       showTempDetail(id);
     }
@@ -1904,7 +1974,7 @@ function showTempForm(id = null) {
     </div>
     <div class="form-group full-width"><label>Địa chỉ thường trú:<span style="color:red">*</span></label><input id="tmp_tt" value="${t.diaChiThuongTru || ''}"></div>
     
-    <div style="display: ${isEdit? 'none': 'block'}">
+    <div style="display: ${isEdit ? 'none' : 'block'}">
       <div class="section-divider">
         <h4 style="color: #e74c3c; margin-top: 0;">Thông tin tạm trú</h4>
       </div>
@@ -1987,9 +2057,9 @@ async function saveTemp(id, isEdit) {
     const res = await ApiService.saveTempResident(data);
     if (res.success) {
       Saved(res.message);
-      
+
       //alert("Lưu thành công");
-      if(!isEdit) hide = 1;
+      if (!isEdit) hide = 1;
       await delay(200);
       await loadTemps();
       showTempDetail(id);
@@ -2047,8 +2117,7 @@ async function renderAbsent(list = absentResidents) {
       <td>${actualIndex}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.cccd}</td><td>${t.noiChuyenDen}</td>
       <td style="text-align: center">
           <button class='btn small primary' onclick="showAbsentDetail(${t.nkID})">Chi tiết</button>
-          <button class='btn small success' onclick="showAbsentForm(${t.nkID})">Sửa</button>
-          <button class='btn small danger' onclick="deleteAbsent(${t.nkID})">Xóa</button>
+          <button class='btn small success' onclick="showActionModalAbs(${t.nkID})">Khác</button>
       </td>
     </tr>
     `;
@@ -2089,10 +2158,12 @@ function showAbsentDetail(id) {
         <div class="info-item-row full-width"><label>Lý do</label><span>${t.lyDo || 'N/A'}</span></div>
     </div>
     <div class="form-actions">
-      <button class="btn success" onclick="showResidentForm(${t.nkID})">Thay đổi thông tin nhân khẩu</button>
-      <button class="btn second" onclick="showAbsentForm(${t.nkID})">Thay đổi thông tin tạm vắng</button>
+      <button class="btn primary" onclick="showActionModalAbs(${t.nkID})">Tất cả thao tác</button>
+      
     </div> 
     `;
+  //<button class="btn secondary" onclick="showResidentForm(${t.nkID})">Thay đổi thông tin nhân khẩu</button>
+  //<button class="btn second" onclick="showAbsentForm(${t.nkID})">Thay đổi thông tin tạm vắng</button>
   showDetailView("Chi tiết tạm vắng", contentHtml);
 }
 function showAbsentForm(id = null) {
@@ -2188,7 +2259,7 @@ async function saveAbsent(id, isEdit) {
       await loadData();
       hide = 1;
       if (isEdit) {
-        
+
         //backDetailView(true);
         if (currentSection == "residents") {
           showResidentDetail(id);
@@ -2220,7 +2291,7 @@ async function saveAbsent(id, isEdit) {
 }
 
 async function deleteAbsent(id) {
-  
+
   if (await confirmm("Xóa tạm vắng?", "Người này đã quay lại địa phương?")) {
     const res = await ApiService.deleteAbsentResident(id);
     if (res.success) {
@@ -2257,12 +2328,14 @@ async function renderRewards(list = rewards) {
       <td>${formatDate(r.ngayTao)}</td>
       <td>
         <button class="btn small primary" onclick ="showRewardDetail(${r.id})">Chi tiết</button>
-        <button class="btn small success" onclick ="changeRewardInfomation(${r.id})">Sửa</button>
-        <button class="btn small danger" onclick = "deleteReward(${r.id})">Xoá</button>
+        <button class="btn small success" onclick ="showActionModalRW(${r.id})">Khác</button>
       </td>`;
     tb.appendChild(tr);
   });
   delayy(200);
+
+  //   <button class="btn small success" onclick ="changeRewardInfomation(${r.id})">Sửa</button>
+  // <button class="btn small danger" onclick = "deleteReward(${r.id})">Xoá</button>
 }
 
 
@@ -2303,7 +2376,7 @@ function showRewardForm() {
   
   `
   showDetailView("Thêm đợt thưởng", contentHtml, true);
-  
+
 }
 
 function onChangeLoaiThuong() {
@@ -2376,9 +2449,11 @@ async function showRewardDetail(id) {
               <tbody>${ds}</tbody>
         </table>
       </div>
-      <button class="btn  success" onclick ="changeRewardInfomation(${r.id})">Thay đổi thông tin thưởng</button>
-      <button class="btn  danger" onclick = "deleteReward(${r.id})">Xoá đợt thưởng</button>
+      <button class="btn  primary" onclick ="showActionModalRW(${r.id}, 1)">Các thao tác</button>
+      
     `
+    // <button class="btn  success" onclick ="changeRewardInfomation(${r.id})">Thay đổi thông tin thưởng</button>
+    //   <button class="btn  danger" onclick = "deleteReward(${r.id})">Xoá đợt thưởng</button>
   }
   else {
     const tong = await ApiService.getTotalHocTap(id);
@@ -2434,10 +2509,13 @@ async function showRewardDetail(id) {
               <tbody>${ds}</tbody>
         </table>
       </div>
-      <button class="btn  success" onclick ="changeRewardInfomation(${r.id})">Thay đổi thông tin thưởng</button>
-      <button class="btn  danger" onclick = "deleteReward(${r.id})">Xoá đợt thưởng</button>
-    `
+      <button class="btn  primary" onclick ="showActionModalRW(${r.id}, 1)">Các thao tác</button>
+      
+    `;
+    // <button class="btn  success" onclick ="changeRewardInfomation(${r.id})">Thay đổi thông tin thưởng</button>
+    //   <button class="btn  danger" onclick = "deleteReward(${r.id})">Xoá đợt thưởng</button>
   }
+
   showDetailView("Chi tiết thưởng", contentHtml, false);
 }
 async function onChangeThanhTich(idDot, id, Sel) {
@@ -2501,7 +2579,7 @@ async function addReward() {
 
       Saved(res.message);
       await delay(200);
-      hide =1 ;
+      hide = 1;
       await loadRewards();
       // rewardHTML = '';
       // backDetailView(true);
@@ -2614,12 +2692,15 @@ async function updateStats(filterType = 'gender') {
   const totalTemp = tempResidents.length;
   const totalAbsent = absentResidents.length;
 
-  const summaryHtml = `<p><b>Tổng số hộ khẩu:</b> ${totalHouseholds} | <b>Tổng số nhân khẩu (đang thường trú):</b> ${totalResidents} | <b>Tổng số tạm trú:</b> ${totalTemp} | <b>Tổng số tạm vắng:</b> ${totalAbsent}</p>`;
+  // const summaryHtml = `<p><b>Tổng số hộ khẩu:</b> ${totalHouseholds} | <b>Tổng số nhân khẩu (đang thường trú):</b> ${totalResidents} | <b>Tổng số tạm trú:</b> ${totalTemp} | <b>Tổng số tạm vắng:</b> ${totalAbsent}</p>`;
+
+  //tổng số nhân khẩu chỉ tính những người đang sinh sống tại địa phương - tức tính tổng nhân khẩu + số tạm trú - số tạm vắng - đã mất
+  const summaryHtml = `<p><b>Tổng số hộ tại địa phương:</b> ${totalHouseholds} | <b>Tổng số nhân khẩu tại địa phương:</b> ${totalResidents + totalTemp} `;
 
   if (filterType === 'gender') {
     stats = {
-      "Nam": residents.filter(r => r.gioiTinh === "Nam" && (!r.ghiChu || r.ghiChu === "Chủ hộ")).length,
-      "Nữ": residents.filter(r => r.gioiTinh === "Nữ" && (!r.ghiChu || r.ghiChu === "Chủ hộ")).length,
+      "Nam": residents.filter(r => r.gioiTinh === "Nam" && (!r.ghiChu)).length + tempResidents.filter(r => r.gioiTinh === "Nam").length,
+      "Nữ": residents.filter(r => r.gioiTinh === "Nữ" && (!r.ghiChu)).length + tempResidents.filter(r => r.gioiTinh === "Nữ").length,
     };
     labels = Object.keys(stats);
     data = Object.values(stats);
@@ -2645,12 +2726,23 @@ async function updateStats(filterType = 'gender') {
       else if (age >= 18 && age <= 60) stats["Lao động (18-60)"]++;
       else if (age > 60) stats["Nghỉ hưu (>60)"]++;
     });
+    tempResidents.forEach(r => {
+      const age = calculateAge(r.ngaySinh);
+      if (age < 0 || r.ghiChu) return;
+      if (age >= 0 && age <= 2) stats["Mầm non (0-2)"]++;
+      else if (age >= 3 && age <= 5) stats["Mẫu giáo (3-5)"]++;
+      else if (age >= 6 && age <= 10) stats["Cấp 1 (6-10)"]++;
+      else if (age >= 11 && age <= 14) stats["Cấp 2 (11-14)"]++;
+      else if (age >= 15 && age <= 17) stats["Cấp 3 (15-17)"]++;
+      else if (age >= 18 && age <= 60) stats["Lao động (18-60)"]++;
+      else if (age > 60) stats["Nghỉ hưu (>60)"]++;
+    });
     labels = Object.keys(stats);
     data = Object.values(stats);
   }
   else if (filterType === 'residence') {
     stats = {
-      "Thường trú": totalResidents,
+      "Đang thường trú": totalResidents,
       "Tạm trú": totalTemp,
       "Tạm vắng": totalAbsent,
     };
@@ -2722,6 +2814,111 @@ function showConfirmModal(msg, cb) {
   confirmModalCancel.onclick = () => confirmModal.style.display = "none";
 }
 
+function showActionModalHH(id, detail) {
+  let a = '';
+  if (detail) a = `<button class="btn secondary" onclick='editHouseholdForm(${id})'>Thay đổi thông tin hộ khẩu</button><button class="btn secondary" onclick='changeOwner(${id})'>Thay đổi chủ hộ</button><button class="btn secondary" onclick='showSplitHouseholdForm(${id})'>Tách hộ khẩu</button><button class="btn secondary" onclick='addResidentForm(${id})'>Thêm nhân khẩu mới</button><button class='btn secondary' onclick='deleteHousehold(${id})'>Xoá hộ khẩu</button>`;
+  else a = `<button class='btn secondary' onclick='showHouseholdBookDetail(${id})'>Xem thông tin chi tiết</button><button class="btn secondary" onclick='editHouseholdForm(${id})'>Thay đổi thông tin hộ khẩu</button><button class="btn secondary" onclick='changeOwner(${id})'>Thay đổi chủ hộ</button><button class="btn secondary" onclick='showSplitHouseholdForm(${id})'>Tách hộ khẩu</button><button class="btn secondary" onclick='addResidentForm(${id})'>Thêm nhân khẩu mới</button><button class='btn secondary' onclick='deleteHousehold(${id})'>Xoá hộ khẩu</button>`;
+  showActionModal(a);
+}
+function showActionModalNK(id, out = 0) {
+  //type = 1 -> absent
+  //type = 2 -> die
+  const r = residents.find(x => x.nkID === id);
+  let a = '';
+  if (r.ghiChu === 'Tạm vắng') {
+    a = `<button class="btn secondary" onclick='showHouseholdBookDetail2(${r.IDHOKHAU})'>Xem thông tin của hộ</button>
+    <button class="btn secondary" onclick='showResidentForm(${id}, ${r.IDHOKHAU})'>Thay đổi thông tin nhân khẩu</button>
+    <button class="btn secondary" onclick='showAbsentForm( ${id} )'>Thay đổi thông tin tạm vắng</button>
+    <button class='btn secondary' onclick='declareDeathForm(${id})'>Khai tử</button>
+    <button class="btn secondary" onclick="deleteResident(${id})">Xoá thường trú</button>
+  `;
+  }
+  else {
+    a = `<button class="btn secondary" onclick='showHouseholdBookDetail2(${r.IDHOKHAU})'>Xem thông tin của hộ</button>
+    <button class="btn secondary" onclick='showResidentForm(${id}, ${r.IDHOKHAU})'>Thay đổi thông tin nhân khẩu</button>
+    <button class="btn secondary" onclick='showAbsentForm( ${id} )'>Đăng ký tạm vắng</button>
+    <button class='btn secondary' onclick='declareDeathForm(${id})'>Khai tử</button>
+    <button class="btn secondary" onclick="deleteResident(${id})">Xoá thường trú</button>
+  `;
+  }
+  if (r.ghiChu === "Đã qua đời") {
+    a = `<button class="btn secondary" onclick='showHouseholdBookDetail2(${r.IDHOKHAU})'>Xem thông tin của hộ</button>
+    <button class="btn secondary" onclick='fireErrNK()' data-close="false">Thay đổi thông tin nhân khẩu</button>
+    <button class="btn secondary" onclick='fireErrNK()' data-close="false">Đăng ký tạm vắng</button>
+    <button class='btn secondary' onclick='fireErrNK()' data-close="false">Khai tử</button>
+    <button class="btn secondary" onclick="deleteResident(${id})">Xoá thường trú</button>
+  `;
+  }
+  if (out) a = `<button class='btn secondary' onclick='showResidentDetail(${id})'>Xem thông tin chi tiết</button>` + a;
+  showActionModal(a);
+}
+function showActionModalRW(id, inn = 0) {
+  let a = '';
+  if (inn) a = `
+    <button class="btn secondary" onclick ="changeRewardInfomation(${id})">Thay đổi thông tin thưởng</button>
+    <button class="btn secondary" onclick = "deleteReward(${id})">Xoá đợt thưởng</button>`;
+  else a = `
+    <button class="btn secondary" onclick ="showRewardDetail(${id})">Chi tiết</button>
+    <button class="btn secondary" onclick ="changeRewardInfomation(${id})">Thay đổi thông tin thưởng</button>
+    <button class="btn secondary" onclick = "deleteReward(${id})">Xoá đợt thưởng</button>
+
+  `;
+  showActionModal(a);
+}
+function showActionModalTemp(id, inn = 0) {
+  let a = '';
+  a = `
+    <button class="btn secondary" onclick="showTempForm(${id})">Thay đổi thông tin cơ bản</button>
+    <button class="btn secondary" onclick="showTempTTForm(${id})">Thay đổi thông tin tạm trú</button>
+    <button class='btn secondary' onclick="deleteTemp(${id})">Xóa Tạm trú</button>`;
+  if (!inn) a = `<button class='btn secondary' onclick="showTempDetail(${id})">Xem thông tin chi tiết</button>` + a;
+  showActionModal(a);
+}
+function showActionModalAbs(id, inn = 0) {
+  let a = '';
+  a = `
+    <button class="btn secondary" onclick="showResidentForm(${id})">Thay đổi thông tin nhân khẩu</button>
+    <button class="btn secondary" onclick="showAbsentForm(${id})">Thay đổi thông tin tạm vắng</button>
+  `;
+  if (!inn) a = `<button class='btn secondary' onclick="showAbsentDetail(${id})">Xem thông tin chi tiết</button>` + a;
+  showActionModal(a);
+}
+function showActionModal(actionLists, msg = 'Vui lòng chọn một hành động bên dưới để tiếp tục.') {
+  actionList.innerHTML = (actionLists || '') + `<button class="action-list-btn danger" onclick="document.getElementById('actionModal').style.display='none'">Hủy</button>`;
+  actionModal.style.display = 'flex';
+  document.getElementById('act-msg').innerText = msg;
+}
+function closeActionModal() {
+  document.getElementById('actionModal').style.display = 'none';
+}
+// function handleActionClick(e) {
+//   if (e.target.tagName === 'BUTTON') {
+//     closeActionModal();
+//   }
+// }
+function handleActionClick(e) {
+  if (e.target.tagName !== 'BUTTON') return;
+
+  const shouldClose = e.target.dataset.close !== "false";
+
+  if (shouldClose) {
+    closeActionModal();
+  }
+}
+function showHouseholdBookDetail2(id) {
+  detailHistory = [];
+  sectionId = 'households';
+  updateHeader(sectionId);
+  resetMenu();
+  document.querySelector(".nav-item[data-section='households']").classList.add("active");
+  currentSection = sectionId;
+
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  const activeSection = document.getElementById(sectionId);
+  if (activeSection) activeSection.classList.add("active");
+  showHouseholdBookDetail(id);
+
+}
 function backDetailView(x = false) {
   //console.log(detailHistory);
   if (x) {
@@ -2776,7 +2973,7 @@ function OKE(str) {
 }
 
 function Saved(str = null, timer = null) {
-  
+
   Swal.fire({
     position: "center",
     icon: "success",
@@ -2809,6 +3006,16 @@ function fireError(errMessage = null) {
     title: "Có lỗi đã xảy ra!",
     text: errMessage,
     // footer: '<a href="#">Why do I have this issue?</a>'
+  });
+}
+function fireErrNK(msg = null) {
+  Swal.fire({
+    position: "center",
+    icon: "error",
+    title: msg || "Nhân khẩu đã bị khai tử",
+    text: "Không thể thay đổi thông tin của người này"
+    //showConfirmButton: true,
+    //timer: 500
   });
 }
 
@@ -2856,7 +3063,7 @@ async function showSplitHouseholdForm(hkId) {
         
         <div class="form-group">
           <label>Chủ hộ:</label>
-          <input type="text" style="height:42px" class="form-control" value="${hk.chuHo }" readonly class="readonly-field">
+          <input type="text" style="height:42px" class="form-control" value="${hk.chuHo}" readonly class="readonly-field">
         </div>
 
         <label>Danh sách thành viên:</label>
@@ -2885,14 +3092,14 @@ async function showSplitHouseholdForm(hkId) {
     </div>
   `
   showDetailView(`Tách hộ khẩu: ${hk.id}`, contentHtml, true);
-  
+
   render();
   initDragEvents();
 }
 
 async function saveSplitHousehold(hkid) {
   if (!state.newOwner) {
-    fireAlert("Chưa có chủ hộ mới","Vui lòng chọn chủ hộ cho hộ mới!");
+    fireAlert("Chưa có chủ hộ mới", "Vui lòng chọn chủ hộ cho hộ mới!");
     return;
   }
   const missingRelation = state.newMembers.find(m => !m.newRole || m.newRole === "");
@@ -2901,7 +3108,7 @@ async function saveSplitHousehold(hkid) {
     return;
   }
 
-  data ={
+  data = {
     idHoKhauCu: hkid,
     diaChi: state.newOwner.diaChiThuongTru,
     HoKhauMoi: {
@@ -2912,10 +3119,10 @@ async function saveSplitHousehold(hkid) {
       }))
     }
   }
-  
-  if(await confirmm("Xác nhận tách hộ khẩu này?")){
+
+  if (await confirmm("Xác nhận tách hộ khẩu này?")) {
     const res = await ApiService.splitHousehold(data);
-    if(res.success){
+    if (res.success) {
       saveHistory(hkid, `${state.newOwner.ten}${(state.newMembers || []).map(m => `, ${m.ten}`).join('')} đã tách thành hộ mới`);
       saveHistory(res.newHkId, 'Tạo hộ mới');
       saveHistory(res.newHkId, `Thêm nhân khẩu: ${state.newOwner.ten}${(state.newMembers || []).map(m => `, ${m.ten}`).join('')}`);
@@ -2926,7 +3133,7 @@ async function saveSplitHousehold(hkid) {
 
       showHouseholdBookDetail(res.newHkId);
     }
-    else{
+    else {
       fireError(res.message);
     }
   }
@@ -2941,7 +3148,7 @@ function initDragEvents() {
 
   zones.forEach(zone => {
     zone.addEventListener('dragover', (e) => {
-      
+
       e.preventDefault(); // Cho phép drop
       zone.classList.add('drag-over');
       if (zone.id === 'new-owner-zone') zone.classList.add('highlight');
@@ -2958,14 +3165,14 @@ function initDragEvents() {
       if (zone.id === 'new-owner-zone') zone.classList.remove('highlight');
 
       const memberId = e.dataTransfer.getData('text/plain');
-      
+
       handleDrop(memberId, zone.id);
     });
   });
 }
 
 function handleDrop(memberId, targetZoneId) {
-  
+
   const compareId = (item) => String(item.nkID) === String(memberId);
   // Tìm thành viên đang được kéo (từ bất kỳ đâu)
   let member = null;
@@ -2985,21 +3192,21 @@ function handleDrop(memberId, targetZoneId) {
   if (!member) return;
   isDetailDirty = true;
   // Xóa member khỏi vị trí cũ
-  if (source === 'old'){
-    if(targetZoneId === 'old-list') return;
+  if (source === 'old') {
+    if (targetZoneId === 'old-list') return;
     state.oldMembers = state.oldMembers.filter(m => String(m.nkID) !== String(memberId));
-  } 
+  }
   if (source === 'owner') state.newOwner = null;
-  if (source === 'new'){
-    if(targetZoneId === 'new-list') return;
+  if (source === 'new') {
+    if (targetZoneId === 'new-list') return;
     state.newMembers = state.newMembers.filter(m => String(m.nkID) !== String(memberId));
-  } 
+  }
 
   // Thêm member vào vị trí mới
   if (targetZoneId === 'new-owner-zone') {
     // Nếu đã có chủ hộ mới, đẩy chủ hộ hiện tại xuống danh sách thành viên mới (hoặc trả về cũ tùy logic, ở đây ta đẩy về list cũ cho an toàn)
     if (state.newOwner) {
-      state.newOwner.newRole ='';
+      state.newOwner.newRole = '';
       state.newMembers.push(state.newOwner);
     }
     state.newOwner = member;
@@ -3099,7 +3306,7 @@ function createMemberItem(member, type) {
     // Tag chủ hộ mới (nhỏ gọn hơn)
     rightContent = `<span style="background:#e8f5e9; color:#2e7d32; padding: 2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">Chủ hộ mới</span>`;
   }
-  else{
+  else {
     rightContent = `<span style="background:#e8f5e9; color:var(--primary-color); padding: 2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">${member.vaiTro}</span>`;
   }
 
@@ -3113,20 +3320,20 @@ window.updateRelation = function (id, value) {
   if (member) member.newRole = value;
 }
 
-function changeOwner(hkId){
-  const hk = households.find(x => x.realId ===hkId);
+function changeOwner(hkId) {
+  const hk = households.find(x => x.realId === hkId);
   state = {
     oldOwner: hk.nhanKhau.find(m => m.nkID === hk.idCH),
     oldMembers: [...hk.nhanKhau], // Danh sách người ở hộ cũ
     newOwner: null,                  // Người làm chủ hộ mới
     newMembers: []                   // Danh sách thành viên ở hộ mới
   };
-  if(!hk) return;
+  if (!hk) return;
   const optionsHtml = state.oldMembers.map(member => {
-        if(member.nkID != hk.idCH) return `<option value="${member.nkID}">${member.ten}</option>`;
-        return '';
+    if (member.nkID != hk.idCH) return `<option value="${member.nkID}">${member.ten}</option>`;
+    return '';
 
-    }).join('');
+  }).join('');
 
   const contentHtml = `
     <div class = "change-household-container">
@@ -3135,7 +3342,7 @@ function changeOwner(hkId){
         
         <div class="form-group">
           <label>Chủ hộ:</label>
-          <input type="text" style="height:42px" class="form-control" value="${hk.chuHo }" readonly class="readonly-field">
+          <input type="text" style="height:42px" class="form-control" value="${hk.chuHo}" readonly class="readonly-field">
         </div>
 
         <label>Danh sách thành viên:</label>
@@ -3171,14 +3378,14 @@ function changeOwner(hkId){
   renderChangeOwner();
 }
 
-function renderChangeOwner(){
+function renderChangeOwner() {
   const oldListEl = document.getElementById('old-list');
   const newListEl = document.getElementById('new-list');
   const newOwnerZone = document.getElementById('new-owner-zone');
 
   oldListEl.innerHTML = '';
   state.oldMembers.forEach(m => {
-    if(m.nkID!== state.oldOwner.nkID) oldListEl.appendChild(createMemberItem2(m, 'old'));
+    if (m.nkID !== state.oldOwner.nkID) oldListEl.appendChild(createMemberItem2(m, 'old'));
   });
 
   newListEl.innerHTML = '';
@@ -3186,7 +3393,7 @@ function renderChangeOwner(){
     newListEl.innerHTML = '<div class="empty-placeholder">Vui lòng chọn chủ hộ trước</div>';
   } else {
     state.newMembers.forEach(m => {
-      if(m.nkID!== state.newOwner?.nkID ) newListEl.appendChild(createMemberItem2(m, 'new'));
+      if (m.nkID !== state.newOwner?.nkID) newListEl.appendChild(createMemberItem2(m, 'new'));
     });
   }
 }
@@ -3201,9 +3408,9 @@ function createMemberItem2(member, type) {
     div.classList.add('owner-style');
   }
 
-  
 
-  
+
+
   // Nội dung bên trái (Tên & Quan hệ cũ)
   let leftContent = `
         <div class="member-info">
@@ -3229,7 +3436,7 @@ function createMemberItem2(member, type) {
     // Tag chủ hộ mới (nhỏ gọn hơn)
     rightContent = `<span style="background:#e8f5e9; color:#2e7d32; padding: 2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">Chủ hộ mới</span>`;
   }
-  else{
+  else {
     rightContent = `<span style="background:#e8f5e9; color:var(--primary-color); padding: 2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">${member.vaiTro}</span>`;
   }
 
@@ -3237,13 +3444,13 @@ function createMemberItem2(member, type) {
   return div;
 }
 
-function eventChangeOwner(newOwnerId){
+function eventChangeOwner(newOwnerId) {
   //console.log(newOwnerId);
-  
+
   const newCH = state.oldMembers.find(x => x.nkID == newOwnerId) || null;
   //console.log(newCH);
   state.newOwner = newCH;
-  if(!newOwnerId){
+  if (!newOwnerId) {
     state.newMembers = [];
   }
   else state.newMembers = state.oldMembers.filter(x => x.nkID != newOwnerId);
@@ -3253,7 +3460,7 @@ function eventChangeOwner(newOwnerId){
 
 async function saveChangeOwner(hkId) {
   if (!state.newOwner) {
-    fireAlert("Chưa có chủ hộ mới","Vui lòng chọn chủ hộ cho hộ mới!");
+    fireAlert("Chưa có chủ hộ mới", "Vui lòng chọn chủ hộ cho hộ mới!");
     return;
   }
   const missingRelation = state.newMembers.find(m => !m.newRole || m.newRole === "");
@@ -3270,9 +3477,9 @@ async function saveChangeOwner(hkId) {
       vaiTro: m.newRole
     }))
   }
-  if(await confirmm("Xác nhận đổi chủ hộ?",`${state.newOwner.ten} sẽ làm chủ hộ mới`)){
+  if (await confirmm("Xác nhận đổi chủ hộ?", `${state.newOwner.ten} sẽ làm chủ hộ mới`)) {
     const res = await ApiService.saveChangeOwner(data);
-    if(res.success){
+    if (res.success) {
       saveHistory(hkId, `Thay đổi chủ hộ từ "${state.oldOwner.ten}" thành "${state.newOwner.ten}"`);
       Saved(res.message);
       await delay(200);
@@ -3280,7 +3487,7 @@ async function saveChangeOwner(hkId) {
 
       showHouseholdBookDetail(hkId);
     }
-    else{
+    else {
       fireError(res.message);
     }
   }

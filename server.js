@@ -140,7 +140,7 @@ app.get('/api/history/households/:id', async (req, res) =>{
                             FORMAT(NGAYTHAYDOI, 'yyyy-MM-dd') AS ngay
                         FROM LICHSUHOKHAU
                         WHERE IDHOKHAU = @id
-                        ORDER BY NGAYTHAYDOI DESC
+                        ORDER BY ID DESC
                         `)
         res.json(lsHK.recordset);
     }
@@ -387,7 +387,16 @@ app.put('/api/households/:id', async (req, res) => {
     const transaction = new sql.Transaction(await connectDB());
     try {
         await transaction.begin();
-        
+        const check = await new sql.Request(transaction)
+            .input('id', sql.Int, id)
+            .query(`SELECT DIACHI FROM HOKHAU WHERE ID = @id`);
+
+            if (check.recordset[0]?.DIACHI === diaChiStr) {
+            return res.status(400).json({
+                success: false,
+                message: "Địa chỉ chưa thay đổi"
+            });
+            }
         const reqT = new sql.Request(transaction);
         await reqT
             .input('diaChi', sql.NVarChar, diaChiStr)
@@ -416,8 +425,9 @@ app.put('/api/households/:id', async (req, res) => {
         res.json({ success: true , message: "Sửa thông tin hộ khẩu thành công!"});
     } catch (err) {
         console.error("lỗi khi put household id", err)
-        if (transaction) await transaction.rollback();
-        res.status(500).json({ error: err.message , message: "Sửa hộ khẩu mới không thành công!"});
+        //if (transaction) await transaction.rollback();
+        
+        res.status(500).json({ success:false, error: err.message , message: "Sửa hộ khẩu mới không thành công!"});
     }
 });
 
@@ -448,7 +458,7 @@ app.put('/api/households/owner/:id', async (req, res) => {
         res.json({ success: true , message: "Thay đổi chủ hộ khẩu thành công!"});
     } catch (err) {
         console.error("lỗi khi đổi chủ hộ", err)
-        if (transaction) await transaction.rollback();
+        //if (transaction) await transaction.rollback();
         res.status(500).json({ error: err.message , message: "Đổi chủ hộ không thành công!"});
     }
 });
@@ -764,6 +774,18 @@ app.post('/api/death', async (req,res) =>{
             .input('noiMat', sql.NVarChar, data.noiQuaDoi)
             .input('lyDo', sql.NVarChar, data.lyDo)
             .query(`
+                DELETE FROM TAMVANG WHERE IDNHANKHAU = @id;
+
+                UPDATE NHANKHAU
+                SET 
+                    GHICHU = N'' 
+                WHERE 
+                    ID = @id;
+
+                UPDATE NHANKHAU
+                SET DIACHIHIENNAY = NOITHUONGTRU 
+                WHERE ID = @id
+
                 INSERT INTO KHAITU (IDNGUOIMAT, NGAYMAT, NOIMAT, LYDOMAT)
                 VALUES (@id, @ngayMat, @noiMat, @lyDo)
                 UPDATE NHANKHAU

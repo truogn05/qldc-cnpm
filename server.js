@@ -394,7 +394,8 @@ app.put('/api/households/:id', async (req, res) => {
             if (check.recordset[0]?.DIACHI === diaChiStr) {
             return res.status(400).json({
                 success: false,
-                message: "Địa chỉ chưa thay đổi"
+                message: "Địa chỉ chưa thay đổi",
+                type:1
             });
             }
         const reqT = new sql.Request(transaction);
@@ -427,7 +428,7 @@ app.put('/api/households/:id', async (req, res) => {
         console.error("lỗi khi put household id", err)
         //if (transaction) await transaction.rollback();
         
-        res.status(500).json({ success:false, error: err.message , message: "Sửa hộ khẩu mới không thành công!"});
+        res.status(500).json({ success:false, error: err.message , message: "Sửa hộ khẩu mới không thành công!", type:0});
     }
 });
 

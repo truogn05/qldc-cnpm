@@ -1217,15 +1217,20 @@ async function editHousehold(id, dc = null) {
     // cccdChuHo: document.getElementById("formCCCD").value,
     // ngayLapSo: document.getElementById("formNgayLapSo").value,
     diaChi: {
-      soNha: document.getElementById("formSoNha").value,
-      ngo: document.getElementById("formNgo").value,
-      duong: document.getElementById("formDuong").value,
-      phuong: document.getElementById("formPhuong").value,
-      quan: document.getElementById("formQuan").value,
-      tinh: document.getElementById("formTinh").value
+      soNha: document.getElementById("formSoNha").value.trim(),
+      ngo: document.getElementById("formNgo").value.trim(),
+      duong: document.getElementById("formDuong").value.trim(),
+      phuong: document.getElementById("formPhuong").value.trim(),
+      quan: document.getElementById("formQuan").value.trim(),
+      tinh: document.getElementById("formTinh").value.trim()
     }
   };
   const dc2 = `${data.diaChi.soNha}, ${data.diaChi.ngo}, ${data.diaChi.duong}, ${data.diaChi.phuong}, ${data.diaChi.quan}, ${data.diaChi.tinh}`;
+  if(dc == dc2){
+    fireAlert("Địa chỉ chưa có sự thay đổi", "Vui lòng kiểm tra lại thông tin");
+    return;
+  }
+  
   //if (!data.chuHo) return fireAlert("Nhập tên chủ hộ!");
   if (await confirmm("Lưu thay đổi?", "Xác nhận thay đổi thông tin của hộ này?")) {
     const res = await ApiService.editHousehold(data);
@@ -1241,7 +1246,6 @@ async function editHousehold(id, dc = null) {
       showHouseholdBookDetail(id);
       //backDetailView();
     } else {
-
       fireError(res.message);
       //alert("Có lỗi xảy ra: " + (res.message || ""));
     }
@@ -1726,6 +1730,7 @@ function declareDeathForm(id) {
   showDetailView(`Đăng ký khai tử cho: ${t.ten}`, contentHtml, true);
 }
 async function saveDeath(nkId) {
+  
   data = {
     id: nkId,
     ngayQuaDoi: document.getElementById('die_ngay').value,
@@ -1762,11 +1767,47 @@ async function saveDeath(nkId) {
 
 
 }
-
-async function deleteResident(id, hkId = null) {
+function deleteResident(id, hkId = null){
   const r = residents.find(x => x.nkID == id);
+  const contentHtml = `
+    <div id="abs_resident_info" style="display: block;">
+      <div class="resident-info-display">
+        <h4>Thông tin người đăng ký</h4>
+        <div class="info-grid">
+          <div class="info-field"><label>Họ tên:</label> <span id="info_ten">${r.ten || ''}</span></div>
+          
+          <div class="info-field"><label>Giới tính:</label> <span id="info_gt">${r.gioiTinh || ''}</span></div>
+          <div class="info-field"><label>Ngày sinh:</label> <span id="info_ns">${formatDate(r.ngaySinh) || ''}</span></div>
+          <div class="info-field"><label>CCCD:</label> <span id="info_cccd">${r.cccd || ''}</span></div>
+          <div class="info-field"><label>Quê quán:</label> <span id="info_qq">${r.queQuan || 'N/A'}</span></div>
+          <div class="info-field"><label>Số điện thoại:</label> <span id="info_sdt">${r.sdt || 'N/A'}</span></div>
+        </div>
+      </div>
+      
+      <div class="section-divider">
+        <h4 style="color: #e74c3c; margin-top: 0;">Xác nhận xoá đăng ký thường trú</h4>
+      </div>
+      <label>Khi xoá đăng ký thường trú, người này sẽ không còn cư chú tại địa phương!</label>
+      <div class="form-actions">
+        <button class="btn danger" onclick="deleteResidentt(${id},${hkId})">Xác nhận</button>
+        <button class="btn" onclick="cancelForm()">Hủy</button>
+        
+      </div>
+    </div>
+    `
+  showDetailView( "Đăng ký xoá tạm trú", contentHtml, true);
+}
+
+async function deleteResidentt(id, hkId = null) {
+  const r = residents.find(x => x.nkID == id);
+  
+  const h = households.find(x =>x.realId === r.IDHOKHAU);
+  if(h.idCH===id){
+    fireAlert("Người này đang làm chủ hộ","Vui lòng đổi chủ hộ của hộ trước khi xoá thường chú người này!");
+    return;
+  }
   if (!r) return;
-  console.log(r.IDHOKHAU);
+  //console.log(r.IDHOKHAU);
   if (await confirmm("Xoá đăng ký thường trú của người này?", "Người này sẽ không còn là người của địa phương", "warning")) {
     const res = await ApiService.deleteResident(id);
     if (res.success) {
@@ -3188,8 +3229,14 @@ function handleDrop(memberId, targetZoneId) {
     member = state.newMembers.find(m => m.nkID == memberId);
     source = 'new';
   }
-
   if (!member) return;
+  if(targetZoneId === 'new-owner-zone'){
+    if(member.ghiChu ==="Đã qua đời"){
+      fireAlert("Nhân khẩu đã bị khai tử", "Không thể làm chủ hộ");
+      return;
+    }
+  }
+  
   isDetailDirty = true;
   // Xóa member khỏi vị trí cũ
   if (source === 'old') {
@@ -3355,7 +3402,7 @@ function changeOwner(hkId) {
         <div class="form-group">
             <label>Chủ hộ:</label>
             
-            <select onchange="eventChangeOwner(this.value)" id="new-owner-zone" class="form-control" style="height: 42px; display: flex; align-items: center; color: #000000ff; appearance: none;">
+            <select onfocus="this.dataset.old = this.value" onchange="eventChangeOwner(this)" id="new-owner-zone" class="form-control" style="height: 42px; display: flex; align-items: center; color: #000000ff; appearance: none;">
                 <option value="">-- Chọn chủ hộ --</option>
                 ${optionsHtml}
             </select>
@@ -3444,12 +3491,21 @@ function createMemberItem2(member, type) {
   return div;
 }
 
-function eventChangeOwner(newOwnerId) {
+function eventChangeOwner(Sel) {
   //console.log(newOwnerId);
-
+  const oldvalue = Sel.dataset.old || "";
+  console.log(oldvalue);
+  const newOwnerId = Sel.value;
   const newCH = state.oldMembers.find(x => x.nkID == newOwnerId) || null;
+  if(newCH.ghiChu === "Đã qua đời"){
+    fireAlert("Nhân khẩu đã bị khai tử", "Không thể làm chủ hộ");
+    Sel.value = oldvalue;
+    return;
+  }
+  Sel.dataset.old = newOwnerId;
   //console.log(newCH);
   state.newOwner = newCH;
+
   if (!newOwnerId) {
     state.newMembers = [];
   }

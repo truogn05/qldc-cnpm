@@ -187,19 +187,22 @@ body {
   z-index: 10;
   color: white;
   opacity: 1;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-  animation: fadeInUp 1s ease;
+  transition: opacity 0.2s ease, transform 0.5s ease;
+  /* animation: fadeInUp 1s ease; */
 }
-
+#loginPage:not(.modal-open) .intro-text {
+  animation: fadeInUp 1s ease forwards;
+}
 /* Hide intro text when modal is open */
 #loginPage.modal-open .intro-text {
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -60%);
+  transform: translate(-50%, -80%) scale(0.8);
 }
 
 .intro-title {
-  font-size: 80px;  /*48*/
+  font-size: 80px;
+  /*48*/
   font-weight: 900;
   margin: 0;
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
@@ -208,13 +211,15 @@ body {
 }
 
 .intro-subtitle {
-  font-size: 40px; /*24*/
+  font-size: 40px;
+  /*24*/
   font-weight: 400;
   margin-top: 15px;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   color: #c8e6f5;
   letter-spacing: 0.5px;
 }
+
 /* 
 .intro-title {
   font-size: 60px;  /*48
@@ -237,7 +242,7 @@ body {
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translate(-50%, -40%);
+    transform: translate(-50%, -36%);
   }
 
   to {
@@ -251,11 +256,11 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.8);
-  z-index: 20;
+  transform: translate(-50%, -20%) scale(0.8);
+  z-index: 50;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition: opacity 0.2s ease, transform 0.5s ease;
 }
 
 /* Show login modal */
@@ -329,6 +334,32 @@ body {
   margin-top: 10px;
   height: 1.2em;
   font-weight: 500;
+}
+
+.register-link {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+.register-link a {
+  color: #0a74bb;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.register-link a:hover {
+  color: #0966a6;
+  text-decoration: underline;
+}
+
+/* Show register modal */
+#registerModal.show {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 /* === App chính === */
@@ -1427,10 +1458,13 @@ select:focus {
 }
 
 .btn.secondary:hover {
-  background-color: #7ecdf2;
+  background-color: #69b0d1;
   /* Xanh rất nhạt */
 }
-
+.btn.secondary.bn:hover {
+  background-color: #ff0000;
+  /* Xanh rất nhạt */
+}
 .btn.secondary.dangerr:hover {
   background-color: #ffccc7;
   border-color: var(--danger-color);

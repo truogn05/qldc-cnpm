@@ -292,10 +292,78 @@ const ApiService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, value })
       });
-      // const res = await fetch(`/api/rewards/${idDot}/changeThanhTich`);
       return await res.json();
     }
     catch (e) { return { success: false }; }
+  },
+
+  // === CITIZEN & REQUESTS ===
+  register: async (data) => {
+    console.log("register");
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch (e) { return { success: false, message: e.message }; }
+  },
+
+  getCitizenInfo: async () => {
+    try {
+      const res = await fetch('/api/citizen/info', { credentials: 'include' });
+      return await res.json();
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
+  getRequests: async () => {
+    try {
+      const res = await fetch('/api/requests', { credentials: 'include' });
+      return await res.json();
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
+  getAdminRequests: async (filters) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const res = await fetch(`/api/requests/admin?${params}`, { credentials: 'include' });
+      return await res.json();
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
+  submitRequest: async (data) => {
+    try {
+      const res = await fetch('/api/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
+  approveRequest: async (id) => {
+    try {
+      const res = await fetch(`/api/requests/${id}/approve`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      return await res.json();
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
+  rejectRequest: async (id, reason) => {
+    try {
+      const res = await fetch(`/api/requests/${id}/reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ rejectionReason: reason })
+      });
+      return await res.json();
+    } catch (e) { return { success: false, error: e.message }; }
   }
 
 };
@@ -314,7 +382,10 @@ let detailHistory = [];
 let renderLai = 0;
 let hide = 1;
 let state = {};
+let currentUser = null; // Store logged in user info
 
+
+let curCitizen = {};
 // Pagination state for each section
 let paginationState = {
   residents: { currentPage: 1, rowsPerPage: 50 },
@@ -385,7 +456,12 @@ document.addEventListener("keydown", function (e) {
 loginBox.addEventListener("click", function (e) {
   e.stopPropagation();
 });
-
+// regBox.addEventListener("click", function (e) {
+//   e.stopPropagation();
+// });
+// loginBox2.addEventListener("click", function (e) {
+//   e.stopPropagation();
+// });
 // Function to close login modal and return to intro
 function closeLoginModal() {
   loginPage.classList.remove("modal-open");
@@ -508,6 +584,69 @@ async function loadRewards() {
     console.error(err);
   }
 }
+
+// Load citizen-specific data
+async function loadCitizenData() {
+  try {
+    login = 0;
+    detailHistory = [];
+
+    const data = await ApiService.getCitizenInfo();
+    curCitizen = data.resident;
+    curCitizen.household = data.household; // Store household info
+    curCitizen.members = data.members; // Store household members
+
+    // Setup citizen-specific menu
+    setupCitizenMenu();
+
+    // Set default section for citizens
+    currentSection = 'citizen_info';
+
+    isDetailDirty = false;
+    await forceNavigateTo(currentSection);
+  } catch (err) {
+    fireError("Không thể tải dữ liệu từ Server!");
+    console.error(err);
+  }
+}
+
+// Setup citizen menu (replace admin menu)
+function setupCitizenMenu() {
+  const sidebar = document.querySelector('.sidebar');
+  const navItems = sidebar.querySelectorAll('.nav-item');
+
+  // Hide all existing nav items
+  navItems.forEach(item => item.style.display = 'none');
+
+  // Hide submenu
+  document.getElementById('residenceSub').style.display = 'none';
+
+  // Create citizen menu items
+  const citizenMenu = `
+    <div class="nav-item active" data-section="citizen_info">📋 Thông tin cá nhân</div>
+    <div class="nav-item" data-section="citizen_household">👪 Thông tin về <br>hộ khẩu</div>
+    <div class="nav-item" data-section="citizen_requests">📝 Yêu cầu của tôi</div>
+    <div class="nav-item" data-section="citizen_submit">➕ Gửi yêu cầu mới</div>
+  `;
+
+  // 
+  //   
+  // Insert citizen menu before logout button
+  const logoutContainer = document.querySelector('.sidebar-bottom');
+  logoutContainer.insertAdjacentHTML('beforebegin', citizenMenu);
+
+  // Attach click handlers to citizen menu items
+  const citizenNavItems = sidebar.querySelectorAll('.nav-item[data-section^="citizen"]');
+
+  citizenNavItems.forEach(item => {
+    item.onclick = () => {
+      citizenNavItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      navigateTo(item.dataset.section);
+    };
+  });
+}
+
 function flattenResidents() {
   residents = [];
   if (!households || !Array.isArray(households)) return;
@@ -526,7 +665,89 @@ function flattenResidents() {
   });
 }
 
-// ===== XÁC THỰC =====
+// ===== XÁC THỰC & ĐĂNG KÝ =====
+
+// DOM elements for registration
+const registerModal = document.getElementById("registerModal");
+const showRegisterBtn = document.getElementById("showRegisterBtn");
+const showLoginBtn = document.getElementById("showLoginBtn");
+const registerBtn = document.getElementById("registerBtn");
+const regCccd = document.getElementById("regCccd");
+const regPassword = document.getElementById("regPassword");
+const regPasswordConfirm = document.getElementById("regPasswordConfirm");
+const regErrorMsg = document.getElementById("regErrorMsg");
+//const regBox = document.querySelector('.login-box.register')
+// Toggle between login and registration forms
+showRegisterBtn.onclick = (e) => {
+  e.preventDefault();
+  loginModal.style.display = "none";
+  registerModal.style.display = "block";
+  registerModal.classList.add("show");
+  loginModal.classList.remove("show");
+
+  // Clear fields
+  regCccd.value = "";
+  regPassword.value = "";
+  regPasswordConfirm.value = "";
+  regErrorMsg.textContent = "";
+};
+
+showLoginBtn.onclick = (e) => {
+  e.preventDefault();
+  registerModal.style.display = "none";
+  registerModal.classList.remove("show");
+  loginModal.style.display = "block";
+  loginModal.classList.add("show");
+  e.stopPropagation();
+  // Clear fields
+  usernameInput.value = "";
+  passwordInput.value = "";
+  errorMsg.textContent = "";
+};
+
+// Registration handler
+registerBtn.onclick = async () => {
+  const cccd = regCccd.value.trim();
+  const password = regPassword.value.trim();
+  const confirmPassword = regPasswordConfirm.value.trim();
+
+  // Validation
+  if (!cccd || !password || !confirmPassword) {
+    regErrorMsg.textContent = "Vui lòng điền đầy đủ thông tin";
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    regErrorMsg.textContent = "Mật khẩu xác nhận không khớp";
+    return;
+  }
+
+  if (password.length < 6) {
+    regErrorMsg.textContent = "Mật khẩu phải có ít nhất 6 ký tự";
+    return;
+  }
+
+  try {
+    const result = await ApiService.register({ username: cccd, password: password });
+
+    if (result.success) {
+      Saved("Đăng ký thành công! Vui lòng đăng nhập.", 1000);
+
+      // Switch to login form
+      setTimeout(() => {
+        showLoginBtn.click();
+        usernameInput.value = cccd;
+        passwordInput.focus();
+      }, 1200);
+    } else {
+      regErrorMsg.textContent = result.message || "Đăng ký thất bại";
+    }
+  } catch (e) {
+    regErrorMsg.textContent = "Lỗi kết nối server";
+    console.error(e);
+  }
+};
+
 passwordInput.addEventListener("keypress", function (event) {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -534,6 +755,13 @@ passwordInput.addEventListener("keypress", function (event) {
   }
 });
 
+regPasswordConfirm.addEventListener("keypress", function (event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    registerBtn.click();
+  }
+});
+// xxxx = '';
 loginBtn.onclick = async () => {
   const u = usernameInput.value.trim();
   const p = passwordInput.value.trim();
@@ -542,31 +770,43 @@ loginBtn.onclick = async () => {
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ username: u, password: p })
     });
+    //console.log("1111",data); 
     const data = await res.json();
 
     if (data.success) {
-      console.log("đăng nhập")
+      currentUser = data.user; // Store user info globally
+      //xxx= currentUser;
+      console.log(data);
+      console.log("Đăng nhập thành công", currentUser);
       Saved("Đăng nhập thành công", 1000);
-      await delay(1000);
-      //showLoading("Đang tải dữ liệu")
+
+
       loginPage.style.display = "none";
       app.style.display = "block";
       showLoading();
 
-      await loadData();
+      // Load appropriate interface based on role
+      if (currentUser.role === 1) {
+        // Admin interface
+        await loadData();
+      } else if (currentUser.role === 2) {
+        // Citizen interface
+        await loadCitizenData();
+      }
+
       closeLoading();
     } else {
-      fireError(data.message || "Đăng nhập thất bại");
-      //errorMsg.textContent = data.message || "Đăng nhập thất bại";
+      fireError(data.message, "Đăng nhập thất bại");
     }
   } catch (e) {
     fireError("Lỗi kết nối server");
     console.error(e);
-    //errorMsg.textContent = "Lỗi kết nối server";
   }
 };
+
 logoutBtn.onclick = () => location.reload();
 
 
@@ -579,7 +819,9 @@ brandLogo.onclick = () => {
 
 document.querySelectorAll(".nav-item").forEach(it => {
   it.onclick = () => {
+
     const sectionId = it.dataset.section;
+    console.log(sectionId);
     if (it.id === "residenceMain") {
       document.getElementById("residenceSub").classList.toggle("show");
       return;
@@ -595,7 +837,7 @@ document.querySelectorAll(".nav-item").forEach(it => {
 
     if (sectionId) setTimeout(() => {
       navigateTo(sectionId);
-    }, 0);
+    }, 10);
   };
 });
 
@@ -669,6 +911,13 @@ async function forceNavigateTo(sectionId) {
     case 'residence_absent': await renderAbsent(); break;
     case 'stats': await updateStats('gender'); break;
     case 'rewards': await renderRewards(); break;
+    case 'citizen_info': await showCitizenDetail(); break;
+    case 'citizen_household': await showHouseholdOfCitizen(); break;
+
+    case 'citizen_requests': await renderCitizenRequests(); break;
+    case 'citizen_submit': await renderCitizenSubmitForm(); break;
+
+    case 'admin_requests': await renderAdminRequests(); break;
   }
 
   console.log("render xong");
@@ -787,7 +1036,19 @@ function updateHeader(sectionId) {
     actionsHtml = `<button class="btn primary" id="addRewardBtn" onclick="showRewardForm()">Thêm đợt thưởng</button>`;
   } else if (sectionId === 'stats') {
     title = "Thống kê dân cư";
+  } else if (sectionId === 'citizen_info') {
+    title = curCitizen.ten;
+  } else if (sectionId === 'citizen_household') {
+    title = "Hộ khẩu: " + curCitizen.household.id;
+  } else if (sectionId === 'citizen_requests') {
+    title = "Đơn xin của bạn";
+  } else if (sectionId === 'citizen_submit') {
+    title = "Đăng ký thay đổi thông tin";
+  } else if (sectionId === 'admin_requests') {
+    title = "Đơn xin của người dân";
   }
+
+
 
   headerTitle.textContent = title;
   headerActions.innerHTML = actionsHtml;
@@ -891,7 +1152,7 @@ async function renderHouseholds(list = households) {
           <td>${h.id}</td>
           <td>${h.chuHo}</td>
           <td>${h.nhanKhau ? h.nhanKhau.length : 0}</td>
-          <td >
+          <td>
             <button class='btn small primary' onclick='showHouseholdBookDetail(${h.realId})'>Chi tiết</button>
             <button class='btn small success' onclick='showActionModalHH(${h.realId})'>Khác</button>
           </td>
@@ -942,7 +1203,7 @@ async function showHouseholdBookDetail(realId) {
 
         <div class="info-item-row"><label>CCCD</label><span>${nk.cccd || 'Mới sinh'}</span></div>
 
-        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(nk.cccdNgayCap) ||'N/A' }</span></div>
+        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(nk.cccdNgayCap) || 'N/A'}</span></div>
         <div class="info-item-row"><label>Nơi cấp CCCD</label><span>${nk.cccdNoiCap || 'N/A'}</span></div>
 
         <div class="info-item-row"><label>Dân tộc</label><span>${nk.danToc}</span></div>
@@ -1067,7 +1328,7 @@ function addHouseholdForm() {
         <div class="form-group"><label>Nghề nghiệp:</label><input id="ch_nghe" value=""></div>
         <div class="form-group full-width"><label>Nơi làm việc:</label><input id="ch_noilamviec" value=""></div>
     </div>
-    <div class="form-group"><label>Địa chỉ hiện nay:<span style="color:red">*</span></label><input type="text" id="ch_diaChiHienNay" value="" ></div>
+    <div class="form-group"><label>Địa chỉ hiện nay:<span style="color:red">*</span></label><input type="text" id="ch_diaChiHienNay" value=""></div>
     <div class="form-actions">
         <button class="btn success" onclick="addHousehold()">Lưu</button>
         <button class="btn" onclick="cancelForm()">Hủy</button>
@@ -1226,11 +1487,11 @@ async function editHousehold(id, dc = null) {
     }
   };
   const dc2 = `${data.diaChi.soNha}, ${data.diaChi.ngo}, ${data.diaChi.duong}, ${data.diaChi.phuong}, ${data.diaChi.quan}, ${data.diaChi.tinh}`;
-  if(dc == dc2){
+  if (dc == dc2) {
     fireAlert("Địa chỉ chưa có sự thay đổi", "Vui lòng kiểm tra lại thông tin");
     return;
   }
-  
+
   //if (!data.chuHo) return fireAlert("Nhập tên chủ hộ!");
   if (await confirmm("Lưu thay đổi?", "Xác nhận thay đổi thông tin của hộ này?")) {
     const res = await ApiService.editHousehold(data);
@@ -1590,7 +1851,7 @@ function addResidentForm(hkId) {
         <div class="form-group full-width"><label>Nơi làm việc:</label><input id="nk_noilamviec" value=""></div>
     </div>
     <div class="form-group full-width"><label>Nơi thường trú hiện nay:<span style="color:red">*</span></label><input id="nk_noht" value="" placeholder='Nhập "Mới sinh" nếu là lần đầu đăng ký thường trú'></div>
-    <div class="form-group full-width"><label>Quan hệ với chủ hộ:<span style="color:red">*</span></label><input id="nk_qhvch" value="" ></div>
+    <div class="form-group full-width"><label>Quan hệ với chủ hộ:<span style="color:red">*</span></label><input id="nk_qhvch" value=""></div>
 
 
       
@@ -1730,7 +1991,7 @@ function declareDeathForm(id) {
   showDetailView(`Đăng ký khai tử cho: ${t.ten}`, contentHtml, true);
 }
 async function saveDeath(nkId) {
-  
+
   data = {
     id: nkId,
     ngayQuaDoi: document.getElementById('die_ngay').value,
@@ -1767,7 +2028,7 @@ async function saveDeath(nkId) {
 
 
 }
-function deleteResident(id, hkId = null){
+function deleteResident(id, hkId = null) {
   const r = residents.find(x => x.nkID == id);
   const contentHtml = `
     <div id="abs_resident_info" style="display: block;">
@@ -1795,15 +2056,15 @@ function deleteResident(id, hkId = null){
       </div>
     </div>
     `
-  showDetailView( "Đăng ký xoá tạm trú", contentHtml, true);
+  showDetailView("Đăng ký xoá tạm trú", contentHtml, true);
 }
 
 async function deleteResidentt(id, hkId = null) {
   const r = residents.find(x => x.nkID == id);
-  
-  const h = households.find(x =>x.realId === r.IDHOKHAU);
-  if(h.idCH===id){
-    fireAlert("Người này đang làm chủ hộ","Vui lòng đổi chủ hộ của hộ trước khi xoá thường chú người này!");
+
+  const h = households.find(x => x.realId === r.IDHOKHAU);
+  if (h.idCH === id) {
+    fireAlert("Người này đang làm chủ hộ", "Vui lòng đổi chủ hộ của hộ trước khi xoá thường chú người này!");
     return;
   }
   if (!r) return;
@@ -1851,7 +2112,7 @@ async function renderTemp(list = tempResidents) {
     temp += `
     <tr>
       <td>${actualIndex}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.queQuan}</td><td style="text-align: right">${t.thoiHanTamTru}</td>
-      <td style="text-align: center">
+      <td>
           <button class='btn small primary' onclick="showTempDetail(${t.nkID})">Chi tiết</button>
           <button class='btn small success' onclick="showActionModalTemp(${t.nkID})">Khác</button>
       </td>
@@ -1926,7 +2187,7 @@ function showTempTTForm(id) {
     <div class="form-group full-width"><label>Nơi tạm trú:<span style="color:red">*</span></label><input id="tmp_noio" value="${t.noiTamTru || ''}"></div>
     <div class="form-grid-2">
         <div class="form-group"><label>Ngày đăng ký:<span style="color:red">*</span></label><input type="date" id="tmp_ngaydk" value="${t.ngayDangKy || new Date().toISOString().split('T')[0]}"></div>
-        <div class="form-group"><label>Đến ngày:<span style="color:red">*</span></label><input type="date" id="tmp_th" value="${t.denNgay || ''}" ></div>
+        <div class="form-group"><label>Đến ngày:<span style="color:red">*</span></label><input type="date" id="tmp_th" value="${t.denNgay || ''}"></div>
     </div>
     
     <div class="form-group full-width"><label>Lý do:</label><input id="tmp_lydo" value="${t.lyDo || ''}"></div>
@@ -2023,7 +2284,7 @@ function showTempForm(id = null) {
       <div class="form-group full-width"><label>Nơi tạm trú:<span style="color:red">*</span></label><input id="tmp_noio" value="${t.noiTamTru || ''}"></div>
       <div class="form-grid-2">
           <div class="form-group"><label>Ngày đăng ký:<span style="color:red">*</span></label><input type="date" id="tmp_ngaydk" value="${t.ngayDangKy || new Date().toISOString().split('T')[0]}"></div>
-          <div class="form-group"><label>Đến ngày:<span style="color:red">*</span></label><input type="date" id="tmp_th" value="${t.denNgay || ''}" ></div>
+          <div class="form-group"><label>Đến ngày:<span style="color:red">*</span></label><input type="date" id="tmp_th" value="${t.denNgay || ''}"></div>
       </div>
       
       <div class="form-group full-width"><label>Lý do:</label><input id="tmp_lydo" value="${t.lyDo || ''}"></div>
@@ -2156,7 +2417,7 @@ async function renderAbsent(list = absentResidents) {
     temp += `
     <tr>
       <td>${actualIndex}</td><td>${t.ten}</td><td>${formatDate(t.ngaySinh)}</td><td>${t.gioiTinh}</td><td>${t.cccd}</td><td>${t.noiChuyenDen}</td>
-      <td style="text-align: center">
+      <td>
           <button class='btn small primary' onclick="showAbsentDetail(${t.nkID})">Chi tiết</button>
           <button class='btn small success' onclick="showActionModalAbs(${t.nkID})">Khác</button>
       </td>
@@ -2245,7 +2506,7 @@ function showAbsentForm(id = null) {
         </div>
         <div class="form-group">
           <label>Tạm vắng đến ngày:<span style="color:red">*</span></label>
-          <input type="date" id="abs_denngay" value="${t.denNgay || ''}" >
+          <input type="date" id="abs_denngay" value="${t.denNgay || ''}">
         </div>
       </div>
       
@@ -2294,7 +2555,7 @@ async function saveAbsent(id, isEdit) {
     const res = await ApiService.saveAbsentResident(data);
     if (res.success) {
       Saved(res.message);
-      await delay(200);
+      delayy(1000);
       //alert("Lưu thành công");
       //delayy(100);
       await loadData();
@@ -2507,7 +2768,7 @@ async function showRewardDetail(id) {
           <td>${item.truong}</td>
           <td>${item.lop}</td>
           <td>
-            <select data-old="${item.tt || ''}" onchange="onChangeThanhTich(${r.id},${item.id}, this)" >
+            <select data-old="${item.tt || ''}" onchange="onChangeThanhTich(${r.id},${item.id}, this)">
               <option value="">-- Chọn --</option>
               <option value="GIOI" ${item.tt === 'GIOI' ? 'selected' : ''}>Giỏi</option>
               <option value="KHA" ${item.tt === 'KHA' ? 'selected' : ''}>Khá</option>
@@ -2822,7 +3083,12 @@ function showDetailView(title, contentHtml, isForm = false) {
       isForm: false // hoặc lưu trạng thái cũ nếu cần
     });
   }
-
+  // if (currentSection == 'citizen_info') {
+  //   detailViewBackBtn.style.display = 'none';
+  // }
+  // else {
+  //   detailViewBackBtn.style.display = 'block';
+  // }
   //console.log(detailHistory);
   //lưu tt cũ -> hiện tt mới
   detailViewTitle.textContent = title;
@@ -2843,7 +3109,7 @@ function hideDetailView() {
 }
 
 function cancelForm() {
-  if (isDetailDirty) {
+  if (isDetailDirty && currentUser.role===1) {
     showConfirmModal("Hủy bỏ thay đổi?", () => backDetailView());
   }
   else backDetailView();
@@ -3040,11 +3306,11 @@ async function confirmm(str, message = null, icon = null) {
   return result.isConfirmed;
 }
 
-function fireError(errMessage = null) {
+function fireError(errMessage = null, errTilte = null) {
   closeLoading();
   Swal.fire({
     icon: "error",
-    title: "Có lỗi đã xảy ra!",
+    title: errTilte || "Có lỗi đã xảy ra!",
     text: errMessage,
     // footer: '<a href="#">Why do I have this issue?</a>'
   });
@@ -3067,7 +3333,9 @@ function fireAlert(str, message = null) {
     icon: "warning"
   });
 }
-
+function fireMsg(msg) {
+  Swal.fire(msg);
+}
 function showLoading(str = null) {
   //closeLoading();
   Swal.fire({
@@ -3230,13 +3498,13 @@ function handleDrop(memberId, targetZoneId) {
     source = 'new';
   }
   if (!member) return;
-  if(targetZoneId === 'new-owner-zone'){
-    if(member.ghiChu ==="Đã qua đời"){
+  if (targetZoneId === 'new-owner-zone') {
+    if (member.ghiChu === "Đã qua đời") {
       fireAlert("Nhân khẩu đã bị khai tử", "Không thể làm chủ hộ");
       return;
     }
   }
-  
+
   isDetailDirty = true;
   // Xóa member khỏi vị trí cũ
   if (source === 'old') {
@@ -3497,7 +3765,7 @@ function eventChangeOwner(Sel) {
   console.log(oldvalue);
   const newOwnerId = Sel.value;
   const newCH = state.oldMembers.find(x => x.nkID == newOwnerId) || null;
-  if(newCH.ghiChu === "Đã qua đời"){
+  if (newCH.ghiChu === "Đã qua đời") {
     fireAlert("Nhân khẩu đã bị khai tử", "Không thể làm chủ hộ");
     Sel.value = oldvalue;
     return;
@@ -3555,4 +3823,881 @@ async function saveHistory(idHK, thongtin) {
     tt: thongtin
   }
   await ApiService.saveHistory(data);
+}
+
+
+
+async function showCitizenDetail() {
+  const id = curCitizen.nkId;
+
+  const r = curCitizen;
+  let dieContent = ''
+  if (!r) return;
+  const isDeath = r.ghiChu === 'Đã qua đời';
+  if (isDeath) {
+    const dieInfo = await ApiService.getDeath(id);
+    dieContent = `
+      <div class="info-item-row full-width" style="border-top: 4px solid #e74c3c; margin-top: 10px; padding-top: 10px;"><label><strong>Ngày qua đời</strong></label><span><strong>${formatDate(dieInfo.ngayMat)}</strong></span></div>
+      <div class="info-item-row full-width"><label>Nơi qua đời</label><span>${dieInfo.noiMat}</span></div>
+      <div class="info-item-row full-width"><label>Lý do qua đời</label><span>${dieInfo.lyDo || 'N/A'}</span></div>
+    `
+  }
+  let absContent = '';
+  if (r.ghiChu === 'Tạm vắng') {
+
+    absContent = `
+      <div class="info-item-row full-width" style="border-top: 4px solid #e74c3c; margin-top: 10px; padding-top: 10px;"><label><strong>Nơi chuyển đến</strong></label><span><strong>${r.noiChuyenDen}</strong></span></div>
+      <div class="info-item-row"><label>Ngày đăng ký</label><span>${formatDate(r.ngayDangKy)}</span></div>
+      <div class="info-item-row"><label>Thời hạn</label><span>${r.thoiHanTamVang || 'N/A'}</span></div>
+      <div class="info-item-row full-width"><label>Lý do</label><span>${r.lyDo || 'N/A'}</span></div>  
+    `
+  }
+
+  // <h3 class="detail-name-title">${r.ten}</h3><h3 style="color: #0a74bb; margin-top: 0; margin-bottom:15px; font-size: 16px; text-transform: uppercase;">Thông tin cơ bản</h3>
+  const contentHtml = `
+    
+    <h3 style="color: #0a74bb; margin-top: 0;margin-bottom:15px; text-transform: uppercase;">Thông tin cơ bản</h3>
+    <div class="info-vertical-list">
+        <div class="info-item-row"><label>Họ và tên</label><span>${r.ten}</span></div>
+        <div class="info-item-row"><label>Giới tính</label><span>${r.gioiTinh}</span></div>
+        
+        <div class="info-item-row"><label>Ngày sinh</label><span>${formatDate(r.ngaySinh)}</span></div>
+        <div class="info-item-row"><label>Nơi sinh</label><span>${r.noiSinh || 'N/A'}</span></div>
+
+        <div class="info-item-row"><label>Quê quán</label><span>${r.queQuan || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Số CCCD</label><span>${r.cccd || 'N/A'}</span></div>
+        
+        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(r.cccdNgayCap) || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nơi cấp CCCD</label><span>${r.cccdNoiCap || 'N/A'}</span></div>
+
+        <div class="info-item-row"><label>Dân tộc</label><span>${r.danToc || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Tôn giáo</label><span>${r.tonGiao || 'N/A'}</span></div>
+        
+        <div class="info-item-row"><label>Quốc tịch</label><span>${r.quocTich || 'Việt Nam'}</span></div>
+        <div class="info-item-row"><label>Nghề nghiệp</label><span>${r.nghe || 'N/A'}</span></div>
+        
+        <div class="info-item-row"><label>Số điện thoại</label><span>${r.sdt || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Email</label><span>${r.email || 'N/A'}</span></div>
+
+        <div class="info-item-row full-width"><label>Địa chỉ thường trú</label><span>${r.diaChiThuongTru || 'N/A'}</span></div>
+        
+        <div class="info-item-row full-width"><label>Nơi ở hiện tại</label><span>${r.noiOHienTai || 'N/A'}</span></div>
+        <div class="info-item-row full-width"><label>Ghi chú</label><span>${r.ghiChu || 'Không có'}</span></div>
+        ${absContent}
+        ${dieContent}
+    </div>
+
+    ${r.household ? `
+      <div class="section-divider">
+        <h3 style="color: #0a74bb; margin-top: 0;margin-bottom: 10px; text-transform: uppercase;">Thông tin về hộ khẩu của bạn</h3>
+      </div>
+      
+      <div class="info-vertical-list">
+        <div class="info-item-row"><label>Chủ hộ</label><span>${r.household.chuHo}</span></div>
+        <div class="info-item-row"><label>Ngày lập sổ</label><span>${formatDate(r.household.ngayLapSo)}</span></div>
+        <div class="info-item-row full-width"><label>Quan hệ của bạn với chủ hộ</label><span>${r.household.vaiTro}</span></div>
+        <div class="info-item-row full-width"><label>Địa chỉ</label><span>${r.household.diaChiFull}</span></div>
+      </div>
+
+      <h4 style="margin-top: 20px; margin-bottom: 10px; color: #0966a6;">Thành viên hộ khẩu</h4>
+      <table style="margin-top: 10px;">
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Họ tên</th>
+            <th>Ngày sinh</th>
+            <th>Giới tính</th>
+            <th>Vai trò</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${r.members.map((m, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${m.ten}</td>
+              <td>${formatDate(m.ngaySinh)}</td>
+              <td>${m.gioiTinh}</td>
+              <td>${m.vaiTro}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <button class='btn primary' onclick='forceNavigateTo("citizen_household")' style="margin-top:18px">Thông tin chi tiết hộ khẩu</button>
+    ` : '<p style="margin-top: 20px; color: #999;">Bạn chưa thuộc hộ khẩu nào ở địa phương.</p>'}
+    
+    `;
+  document.getElementById('citizenInfoContent').innerHTML = contentHtml;
+  //showDetailView("Thông tin chi tiết", contentHtml);
+  // <button class="btn success" onclick='showResidentForm(${r.nkID})'>Thay đổi thông tin nhân khẩu</button>
+  // <button class="btn second" onclick='showAbsentForm( ${r.nkID} )'> ${r.ghiChu === 'Tạm vắng' ? "Thay đổi thông tin tạm vắng" : "Đăng kí tạm vắng"} </button>
+  // <button class='btn danger' onclick='declareDeathForm(${r.nkID})'>Khai tử</button>
+}
+
+
+async function renderCitizenRequests() {
+  const data = await ApiService.getRequests();
+
+  if (!data.success) {
+    fireError('Không thể tải danh sách yêu cầu');
+    return;
+  }
+
+  const tbody = document.querySelector('#citizenRequestsTable tbody');
+  tbody.innerHTML = '';
+
+  if (data.requests.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có yêu cầu nào</td></tr>';
+    return;
+  }
+
+  data.requests.forEach((req, i) => {
+    const statusColor = req.status === 'Approved' ? 'green' :
+      req.status === 'Rejected' ? 'red' : 'orange';
+    const statusText = req.status === 'Approved' ? 'Đã duyệt' :
+      req.status === 'Rejected' ? 'Từ chối' : 'Chờ duyệt';
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${req.actionName}</td>
+        <td>${req.targetPerson || 'N/A'}</td>
+        <td><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></td>
+        <td>${req.createdDate}</td>
+        <td>
+          ${req.status === 'Rejected' && req.rejectReason ?
+        `<button class="btn small" onclick="fireMsg('Lý do: ${req.rejectReason}')">Xem lý do</button>` :
+        '-'}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+async function renderCitizenSubmitForm() {
+  const r = curCitizen;
+
+  // Build dynamic request type options based on status
+  let requestButtons = [];
+
+  // Always available
+  requestButtons.push({ value: 'saveTamVang', label: 'Đăng ký tạm vắng' });
+  requestButtons.push({ value: 'removeThuongTru', label: 'Xóa đăng ký thường trú' });
+
+  // Conditional based on ghiChu
+  if (r.ghiChu === 'Tạm trú' || r.ghiChu === 'Đang tạm trú') {
+    requestButtons.push({ value: 'removeTamTru', label: 'Xóa đăng ký tạm trú' });
+  }
+
+  if (r.ghiChu === 'Tạm vắng' || r.ghiChu === 'Đang tạm vắng') {
+    requestButtons.push({ value: 'removeTamVang', label: 'Xóa đăng ký tạm vắng' });
+    requestButtons.find(x => x.value === 'saveTamVang').label = "Sửa thông tin tạm vắng"
+  }
+
+  // Household management options (if belongs to a household)
+  if (r.household) {
+    requestButtons.push({ value: 'changeHouseholdInfo', label: 'Thay đổi thông tin hộ khẩu' });
+    requestButtons.push({ value: 'changeHouseholdHead', label: 'Đổi chủ hộ' });
+    requestButtons.push({ value: 'splitHousehold', label: 'Tách hộ' });
+  }
+
+  // Generate buttons HTML
+  //style="width: 100%; text-align: left; padding: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px;" 
+  const buttonsHtml = requestButtons.map(btn => `
+    <button class="btn secondary bn" 
+            onclick="showRequestForm('${btn.value}', '${btn.label}')" style="background:#0088cc; color:#fff; min-height:50px; ">
+      
+      <span>${btn.label}</span>
+    </button>
+  `).join('');
+
+  // Display buttons in the content area
+  const contentContainer = document.querySelector('#citizen_submit');
+  if (contentContainer) {
+    contentContainer.innerHTML = `
+      <div class="card-stats" style="max-width: 600px; margin: 0 auto; color: var(--primary-color);">
+        <h3 style="margin-bottom: 20px; text-align: center;">Vui lòng chọn yêu cầu</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          ${buttonsHtml}
+        </div>
+      </div>
+    `;
+  }
+}
+
+// New function to show request form based on selected type
+function showRequestForm(actionKey, actionName) {
+  const r = curCitizen;
+  let formHtml = '';
+  const tt = `
+    <div class="resident-info-display">
+      <h4>Thông tin người đăng ký</h4>
+      <div class="info-grid">
+        <div class="info-field"><label>Họ tên:</label> <span id="info_ten">${r.ten || ''}</span></div>
+        
+        <div class="info-field"><label>Giới tính:</label> <span id="info_gt">${r.gioiTinh || ''}</span></div>
+        <div class="info-field"><label>Ngày sinh:</label> <span id="info_ns">${formatDate(r.ngaySinh) || ''}</span></div>
+        <div class="info-field"><label>CCCD:</label> <span id="info_cccd">${r.cccd || ''}</span></div>
+        <div class="info-field"><label>Quê quán:</label> <span id="info_qq">${r.queQuan || 'N/A'}</span></div>
+        <div class="info-field"><label>Số điện thoại:</label> <span id="info_sdt">${r.sdt || 'N/A'}</span></div>
+      </div>
+    </div>
+  `
+
+  if (actionKey === 'saveTemp' || actionKey === 'saveTamVang') {
+    formHtml = `
+      <form id="requestFormContent" onsubmit="submitRequestForm(event, '${actionKey}', '${actionName}')">
+        ${tt} 
+        <div class="section-divider">
+          <h4 style="color: #e74c3c; margin-top: 0;">${actionKey === 'saveTemp' ? 'Thông tin tạm trú' : 'Thông tin tạm vắng'}</h4>
+        </div>
+        <div class="form-grid-2">
+          
+          <div class="form-group">
+            <label>Từ ngày:<span style="color:red">*</span></label>
+            <input type="date" id="ngayDangKy" required value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="form-group">
+            <label>Đến ngày:<span style="color:red">*</span></label>
+            <input type="date" id="denNgay" required>
+          </div>
+          
+        </div>
+        <div class="form-group">
+          <label>${actionKey === 'saveTemp' ? 'Nơi tạm trú' : 'Nơi chuyển đến'}:<span style="color:red">*</span></label>
+          <input type="text" id="noiTamTru" value="${actionName === 'Sửa thông tin tạm vắng' ? r.noiChuyenDen : ''}" required>
+        </div>
+        <div class="form-group">
+          <label>Lý do:<span style="color:red">*</span></label>
+          <input type="text" id="lyDo" value="${r.lyDo || ''}" required>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn success">Gửi yêu cầu</button>
+          <button type="button" class="btn" onclick="navigateTo('citizen_submit')">Hủy</button>
+        </div>
+      </form>
+    `;
+  } else if (actionKey === 'changeHouseholdInfo') {
+    const h = curCitizen.household;
+    formHtml = `
+    <form id="requestFormContent" onsubmit="submitRequestForm(event, '${actionKey}', '${actionName}')">
+      <div class="household-info-display">
+        <h4>Thông tin hộ khẩu</h4>
+        <div class="info-grid">
+          <div class="info-field"><label>Họ tên chủ hộ:</label> <span id="info_ten">${h.chuHo}</span></div>
+          <div class="info-field"><label>Ngày lập sổ:</label><span id="info_ngayLap">${formatDate(h.ngayLapSo)}</span></div>
+          <div class="info-field"><label>Số nhà:</label> <span id="info_soNha">${h.diaChi.soNha}</span></div>
+          <div class="info-field"><label>Ngõ/Đường:</label> <span id="info_ngo">${h.diaChi.ngo}</span></div>
+          <div class="info-field"><label>Tổ dân phố:</label> <span id="info_tdp">${h.diaChi.duong}</span></div>
+          <div class="info-field"><label>Phường:</label> <span id="info_phuong">${h.diaChi.phuong}</span></div>
+          <div class="info-field"><label>Quận/Huyện:</label> <span id="info_qh">${h.diaChi.quan}</span></div>
+          <div class="info-field"><label>Tỉnh/Thành phố:</label> <span id="info_tp">${h.diaChi.tinh}</span></div>
+        </div>
+      </div>
+      <div class="section-divider">
+        <h4 style="color: #e74c3c; margin-top: 0;">Thông tin địa chỉ mới</h4>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group"><label>Số nhà:</label><input type="text" id="formSoNha" value="${h.diaChi.soNha || ''}"></div>
+        <div class="form-group"><label>Ngõ/Đường:</label><input type="text" id="formNgo" value="${h.diaChi.ngo || ''}"></div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group"><label>Tổ dân phố:</label><input type="text" id="formDuong" value="${h.diaChi.duong || ''}"></div>
+        <div class="form-group"><label>Phường/Xã:</label><input type="text" id="formPhuong" value="${h.diaChi.phuong || ''}"></div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group"><label>Quận/Huyện:</label><input type="text" id="formQuan" value="${h.diaChi.quan || ''}"></div>
+        <div class="form-group"><label>Tỉnh/TP:</label><input type="text" id="formTinh" value="${h.diaChi.tinh || ''}"></div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn success">Gửi yêu cầu</button>
+        <button type="button" class="btn" onclick="navigateTo('citizen_submit')">Hủy</button>
+      </div>
+    </form>
+
+    `
+
+  } else if (actionKey === 'changeHouseholdHead') {
+    const hk = curCitizen.household;
+    hk.nhanKhau = curCitizen.members;
+    state = {
+      oldOwner: hk.nhanKhau.find(m => m.nkID === hk.idCH),
+      oldMembers: [...hk.nhanKhau], // Danh sách người ở hộ cũ
+      newOwner: null,                  // Người làm chủ hộ mới
+      newMembers: []                   // Danh sách thành viên ở hộ mới
+    };
+    if (!hk) return;
+    const optionsHtml = state.oldMembers.map(member => {
+      if (member.nkID != hk.idCH) return `<option value="${member.nkID}">${member.ten}</option>`;
+      return '';
+
+    }).join('');
+
+    formHtml = `
+    <form id="requestFormContent" onsubmit="submitRequestForm(event, '${actionKey}', '${actionName}')">
+      <div class = "change-household-container">
+        <div class="card card-old">
+          <div class="card-title">Hộ khẩu hiện tại </div>
+          
+          <div class="form-group">
+            <label>Chủ hộ:</label>
+            <input type="text" style="height:42px" class="form-control" value="${hk.chuHo}" readonly class="readonly-field">
+          </div>
+
+          <label>Danh sách thành viên:</label>
+          <div id="old-list" class="member-list-zone">     </div>
+        </div>
+
+        <div class="card card-new">
+          <div class="card-title">Hộ khẩu mới</div>
+
+          <div class="form-group">
+              <label>Chủ hộ:</label>
+              
+              <select onfocus="this.dataset.old = this.value" onchange="eventChangeOwner(this)" id="new-owner-zone" class="form-control" style="height: 42px; display: flex; align-items: center; color: #000000ff; appearance: none;">
+                  <option value="">-- Chọn chủ hộ --</option>
+                  ${optionsHtml}
+              </select>
+                
+          </div>
+
+          <label>Các thành viên khác:</label>
+          <div id="new-list" class="member-list-zone">
+            <div class="empty-placeholder">Vui lòng chọn chủ hộ trước</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn success">Gửi yêu cầu</button>
+        <button type="button" class="btn" onclick="navigateTo('citizen_submit')">Hủy</button>
+      </div>
+    </form>
+    `;
+
+
+  } else if (actionKey === 'splitHousehold') {
+
+    const hk = curCitizen.household;
+    hk.nhanKhau = curCitizen.members;
+
+    if (!hk.nhanKhau || hk.nhanKhau.length < 2) return fireAlert("Hộ phải có ít nhất 2 người để tách.");
+
+    state = {
+      oldMembers: [...hk.nhanKhau.filter(m => m.nkID !== hk.idCH)], // Danh sách người ở hộ cũ
+      newOwner: null,                  // Người làm chủ hộ mới
+      newMembers: []                   // Danh sách thành viên ở hộ mới
+    };
+    // Khởi chạy
+
+    formHtml = `
+    <form id="requestFormContent" onsubmit="submitRequestForm(event, '${actionKey}', '${actionName}')">
+      <div class = "split-household-container">
+        <div class="card card-old">
+          <div class="card-title">Hộ khẩu cũ </div>
+          
+          <div class="form-group">
+            <label>Chủ hộ:</label>
+            <input type="text" style="height:42px" class="form-control" value="${hk.chuHo}" readonly class="readonly-field">
+          </div>
+
+          <label>Danh sách thành viên:</label>
+          <div id="old-list" class="member-list-zone"> </div>
+        </div>
+
+        <div class="card card-new">
+          <div class="card-title">Hộ khẩu mới</div>
+
+          <div class="form-group">
+              <label>Chủ hộ:</label>
+              <div id="new-owner-zone" class="form-control" style="height: 42px; display: flex; align-items: center; color: #999;">
+                  Kéo thành viên vào đây làm chủ hộ
+              </div>
+          </div>
+
+          <label>Các thành viên khác:</label>
+          <div id="new-list" class="member-list-zone">
+            <div class="empty-placeholder">Kéo thả thành viên vào đây</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn success">Gửi yêu cầu</button>
+        <button type="button" class="btn" onclick="navigateTo('citizen_submit')">Hủy</button>
+      </div>
+    </form>
+    `
+
+  } else {
+    // For simple requests without additional fields
+    formHtml = `
+       ${tt} 
+      <form id="requestFormContent" onsubmit="submitRequestForm(event, '${actionKey}', '${actionName}')">
+        <p style="color:red;">Bạn có chắc chắn muốn gửi yêu cầu "${actionName}"?</p>
+        <div class="form-actions">
+          <button type="submit" class="btn success">Xác nhận gửi</button>
+          <button type="button" class="btn" onclick="navigateTo('citizen_submit')">Hủy</button>
+        </div>
+      </form>
+    `;
+  }
+
+  showDetailView(actionName, formHtml);
+
+  if (actionKey === 'changeHouseholdHead') renderChangeOwner();
+  if (actionKey === 'splitHousehold') {
+    render();
+    initDragEvents();
+  }
+}
+
+// Submit request form
+async function submitRequestForm(event, actionKey, actionName) {
+
+  event.preventDefault();
+
+  const nkId = curCitizen.nkID;
+  let payload = {};
+
+  if (actionKey === 'saveTemp' || actionKey === 'saveTamVang') {
+    payload = {
+      text: actionKey === 'saveTemp' ? `
+        Đăng ký tạm trú cho ${curCitizen.ten}
+      `:`
+      ${actionName} cho ${curCitizen.ten} chuyển đến
+      `,
+      noiTamTru: document.getElementById('noiTamTru')?.value,
+      noiChuyenDen: document.getElementById('noiTamTru')?.value,
+      ngayDangKy: document.getElementById('ngayDangKy')?.value,
+      denNgay: document.getElementById('denNgay')?.value,
+      lyDo: document.getElementById('lyDo')?.value
+    };
+  } else if (actionKey === 'changeHouseholdInfo') {
+    // Get new address from individual fields
+    const newAddress = {
+      soNha: document.getElementById('formSoNha')?.value || '',
+      ngo: document.getElementById('formNgo')?.value || '',
+      duong: document.getElementById('formDuong')?.value || '',
+      phuong: document.getElementById('formPhuong')?.value || '',
+      quan: document.getElementById('formQuan')?.value || '',
+      tinh: document.getElementById('formTinh')?.value || ''
+    };
+
+    payload = {
+      text: " Thay đổi địa chỉ của hộ đến",
+      id: curCitizen.household.realId,
+      diaChi: newAddress,
+      diaChiFull: `${newAddress.soNha}, ${newAddress.ngo}, ${newAddress.duong}, ${newAddress.phuong}, ${newAddress.quan}, ${newAddress.tinh}`
+    };
+  } else if (actionKey === 'changeHouseholdHead') {
+    // Get new head from state if using drag-drop interface
+    
+
+    if (!newHeadId) {
+      fireError('Vui lòng chọn chủ hộ mới');
+      return;
+    }
+
+    payload = {
+      idHK: curCitizen.household.realId,
+      newOwnerId: state.newOwner.nkID,
+      tv: state.newMembers.map(m => ({
+        id: m.nkID,
+        vaiTro: m.newRole
+      })),
+      text: "Thay đổi chủ hộ cho hộ khẩu "+curCitizen.household.id,
+      none: ' '
+    }
+  } else if (actionKey === 'splitHousehold') {
+    // Get members from state if using drag-drop interface
+    // if (!window.state || !window.state.newOwner) {
+    //   fireError('Vui lòng chọn chủ hộ mới cho hộ tách');
+    //   return;
+    // }
+
+    if (!state.newOwner) {
+      //fireError('Hộ mới chưa có chủ hộ');
+      fireError('Vui lòng chọn chủ hộ mới cho hộ tách');
+      return;
+    }
+
+    // Include new owner and new members
+    //const memberIds = [window.state.newOwner.nkID, ...window.state.newMembers.map(m => m.nkID)];
+
+    
+    payload = {
+      idHoKhauCu: curCitizen.household.realId,
+      diaChi: state.newOwner.diaChiThuongTru,
+      HoKhauMoi: {
+        idChuHo: state.newOwner.nkID,
+        thanhVien: state.newMembers.map(m => ({
+          id: m.nkID,
+          vaiTro: m.newRole
+        }))
+      },
+      text: 'Tách hộ khẩu',
+      HKcu: curCitizen.members.map(x => `${x.ten}`).join(', '),
+      HK1: curCitizen.household.chuHo + ', ' + state.oldMembers.map(x => `${x.ten}`).join(', '),
+      HK2: state.newOwner.ten + ', ' + state.newMembers.map(x => `${x.ten}`).join(', ')
+    }
+  }
+  if (!await confirmm("Xác nhận gửi yêu cầu?")) return;
+  const result = await ApiService.submitRequest({
+    actionKey,
+    actionName,
+    nkId,
+    payload
+  });
+
+  if (result.success) {
+    Saved('Gửi yêu cầu thành công!', 1200);
+    await delay(1000);
+    resetMenu();
+    document.querySelector(".nav-item[data-section='citizen_requests']").classList.add("active");
+    navigateTo('citizen_requests');
+  } else {
+    fireError(result.message || 'Gửi yêu cầu thất bại');
+  }
+}
+
+async function showHouseholdOfCitizen() {
+
+  const h = curCitizen.household;
+  if (!h) {
+    return;
+  }
+  resetMenu();
+  document.querySelector(".nav-item[data-section='citizen_household']").classList.add("active");
+  const history = await ApiService.getHouseholdHistory(h.realId);
+  let historyContent = '';
+  if (history) {
+    historyContent = (history || []).map(ls => `
+    <div class="info-item-row full-width"><label style="font-size: 14px">Ngày: ${formatDate(ls.ngay)}</label><span style="font-size: 16px">${ls.tt}</span></div>
+      `).join('');
+  }
+  const membersHtml = (curCitizen.members || []).map(nk => `
+      <div class="book-member-card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <h4>${nk.ten} (${nk.vaiTro})</h4>
+        <div>
+          
+        </div>
+      </div>
+      <div class="info-vertical-list">
+        <div class="info-item-row"><label>Ngày sinh</label><span>${formatDate(nk.ngaySinh)}</span></div>
+        <div class="info-item-row"><label>Giới tính</label><span>${nk.gioiTinh}</span></div>
+
+        <div class="info-item-row"><label>Nơi sinh</label><span>${nk.noiSinh}</span></div>
+        <div class="info-item-row"><label>Nguyên quán</label><span>${nk.queQuan}</span></div>
+
+        <div class="info-item-row"><label>CCCD</label><span>${nk.cccd || 'Mới sinh'}</span></div>
+
+        <div class="info-item-row"><label>Ngày cấp CCCD</label><span>${formatDate(nk.cccdNgayCap) || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nơi cấp CCCD</label><span>${nk.cccdNoiCap || 'N/A'}</span></div>
+
+        <div class="info-item-row"><label>Dân tộc</label><span>${nk.danToc}</span></div>
+        <div class="info-item-row"><label>Tôn giáo</label><span>${nk.tonGiao}</span></div>
+
+        <div class="info-item-row"><label>Quốc tịch</label><span>${nk.quocTich}</span></div>
+        <div class="info-item-row"><label>Nghề nghiệp</label><span>${nk.nghe || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Nơi làm việc</label><span>${nk.noiLamViec || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Địa chỉ thường trú trước khi chuyển đến</label><span>${nk.diaChiTruoc || 'Mới sinh'}</span></div>
+        <div class="info-item-row"><label>Ngày đăng kí thường chú</label><span>${formatDate(nk.ngayDKTT)}</span></div>
+
+        <div class="info-item-row full-width"><label>Địa chỉ thường trú</label><span>${nk.diaChiThuongTru || 'N/A'}</span></div>
+        <div class="info-item-row full-width"><label>Địa chỉ hiện nay</label><span>${nk.noiOHienTai || 'N/A'}</span></div>
+        <div class="info-item-row full-width"><label>Ghi chú</label><span>${nk.ghiChu || 'Không có'}</span></div>
+      </div>
+    </div>
+    `).join('');
+  // ${nk.ghiChu == 'Đã qua đời' ? '' : `
+  //         <button class="btn small success" onclick="showResidentForm(${nk.nkID}, ${realId})">Thay đổi thông tin</button>
+  //         <button class="btn small second" onclick="showAbsentForm(${nk.nkID})">${nk.ghiChu == 'Tạm vắng' ? 'Sửa thông tin tạm vắng' : 'Đăng ký tạm vắng'}</button>
+  //         <button class="btn small third" onclick="declareDeathForm(${nk.nkID})">Khai tử</button>  
+  //         `}
+  //       <button class="btn small danger" onclick="deleteResident(${nk.nkID})">Xoá thường trú</button>  
+
+  const contentHtml = `
+    <h3 class="detail-name-title" style = "text-align: center; border: none; margin-bottom: 5px;"> SỔ HỘ KHẨU</h3>
+    <h3 class="book-title" style="text-align: center; margin-top: 0; padding-top: 0;">Số: ${h.id}</h3>
+    
+    <div class="book-section">
+      <h3>Thông tin chung</h3>
+      <div class="info-vertical-list">
+        <div class="info-item-row"><label>Chủ hộ</label><span>${h.chuHo}</span></div>
+        <div class="info-item-row"><label>Ngày lập sổ</label><span>${formatDate(h.ngayLapSo)}</span></div>
+        <div class="info-item-row"><label>Số nhà</label><span>${h.diaChi.soNha}</span></div>
+        <div class="info-item-row"><label>Ngõ/Đường</label><span>${h.diaChi.ngo}</span></div>
+        <div class="info-item-row"><label>Tổ dân Phố</label><span>${h.diaChi.duong}</span></div>
+        <div class="info-item-row"><label>Phường/Xã</label><span>${h.diaChi.phuong}</span></div>
+        <div class="info-item-row"><label>Quận/Huyện</label><span>${h.diaChi.quan}</span></div>
+        <div class="info-item-row"><label>Tỉnh/Thành phố</label><span>${h.diaChi.tinh}</span></div>
+      </div>
+    </div>
+    
+    <div class="book-section">
+      <h3>Thành viên trong hộ</h3>
+      <div class="book-members-list">${membersHtml || '<p>Chưa có thành viên.</p>'}</div>
+    </div>
+    
+    <div class="book-section">
+      <h3>Lịch sử thay đổi</h3>
+      <div class="book-members-list">${historyContent || '<div class="info-item-row full-width"><span style="font-size: 16px">Chưa có thông tin thay đổi</span></div>'}</div>
+    </div>
+
+
+  `;
+
+  document.getElementById('householdInfoContent').innerHTML = contentHtml;
+  //showDetailView(`Sổ hộ khẩu: ${ h.id } `, contentHtml);
+
+  // <button class="btn success" onclick='editHouseholdForm(${h.realId})'>Thay đổi thông tin hộ khẩu</button>
+  //     <button class="btn second" onclick='changeOwner(${h.realId})'>Thay đổi chủ hộ</button>
+  //     <button class="btn third" onclick='showSplitHouseholdForm(${h.realId})'>Tách hộ khẩu</button>
+  //     <button class="btn primary" onclick='addResidentForm(${h.realId})'>Thêm nhân khẩu mới</button>
+  //     <button class='btn danger' onclick='deleteHousehold(${h.realId})'>Xoá hộ khẩu</button>
+}
+
+// ===== ADMIN REQUEST MANAGEMENT =====
+
+let currentRequestFilter = '';
+
+async function renderAdminRequests() {
+  const filterSelect = document.getElementById('adminRequestStatusFilter');
+
+  // Attach filter change handler
+  if (!filterSelect.dataset.initialized) {
+    filterSelect.addEventListener('change', async (e) => {
+      currentRequestFilter = e.target.value;
+      await renderAdminRequests();
+    });
+    filterSelect.dataset.initialized = 'true';
+  }
+
+  const filters = {};
+  if (currentRequestFilter) {
+    filters.status = currentRequestFilter;
+  }
+
+  const data = await ApiService.getAdminRequests(filters);
+
+  console.log(data);
+  if (!data.success) {
+    fireError('Không thể tải danh sách đơn xin');
+    return;
+  }
+
+  const tbody = document.querySelector('#adminRequestsTable tbody');
+  tbody.innerHTML = '';
+
+  if (data.requests.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Chưa có đơn xin nào</td></tr>';
+    return;
+  }
+
+  data.requests.forEach((req, i) => {
+    const statusColor = req.status === 'Approved' ? 'green' :
+      req.status === 'Rejected' ? 'red' : 'orange';
+    const statusText = req.status === 'Approved' ? 'Đã duyệt' :
+      req.status === 'Rejected' ? 'Đã từ chối' : 'Chờ duyệt';
+
+    let actionButtons = '';
+    if (req.status === 'PENDING') {
+      actionButtons = `
+      <button class="btn small success" onclick = "approveRequestHandler(${req.id})"> Đồng ý</button>
+      <button class="btn small danger" onclick="rejectRequestHandler(${req.id})">Từ chối</button>
+  `;
+    } else {
+      actionButtons = '<span style="color: #888;"></span>';
+    }
+    const safeJson = escapeHtml(JSON.stringify(req));
+    tbody.innerHTML += `
+    <tr>
+        <td>${i + 1}</td>
+        <td>${req.citizenName || req.citizenCCCD || 'N/A'}</td>
+        <td>${req.actionName}</td>
+        <td>${req.targetPerson || 'N/A'}</td>
+        <td><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></td>
+        <td>${req.createdDate}</td>
+        <td>
+          <button class="btn small primary" data-id="${req.id}" data-request='${safeJson}' onclick="showRequestDetailx(this)">Chi tiết</button>
+          
+        </td>
+      </tr>
+    `;
+  });//${actionButtons}
+}
+function showRequestDetailx(btn) {
+  const id = btn.getAttribute('data-id');
+  // Lấy chuỗi JSON và parse lại thành Object
+  const requestData = btn.getAttribute('data-request');
+
+  showRequestDetail(id, requestData); // Gọi hàm gốc của bạn
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML.replace(/'/g, '&#39;');
+}
+
+async function showRequestDetail(requestId, reqDataStr) {
+  const req = JSON.parse(reqDataStr.replace(/&#39;/g, "'"));
+
+  let payload = {};
+  try {
+    payload = JSON.parse(req.payload || '{}');
+  } catch (e) {
+    console.warn('Could not parse payload:', e);
+  }
+
+  const statusColor = req.status === 'Approved' ? 'green' :
+    req.status === 'Rejected' ? 'red' : 'orange';
+  const statusText = req.status === 'Approved' ? 'Đã duyệt' :
+    req.status === 'Rejected' ? 'Đã từ chối' : 'Chờ duyệt';
+
+  let payloadHtml = '';
+  if (Object.keys(payload).length > 0) {
+    payloadHtml = `<h4 style="margin-top: 20px; color: #0a74bb;margin-bottom:10px;">Chi tiết yêu cầu: ${req.actionName}</h4><div class="info-vertical-list">`;
+    for (const [key, value] of Object.entries(payload)) {
+      
+      const label = formatPayloadKey(key);
+      if(label === 10) continue;
+      const displayValue = key.includes('ngay') || key.includes('Ngay') ? formatDate(value) : value;
+      payloadHtml += `<div class="info-item-row"><label>${label}</label><span>${displayValue}</span></div> `;
+    }
+    payloadHtml += '</div>';
+  }
+
+  let rejectionHtml = '';
+  if (req.status === 'REJECTED' && req.rejectReason) {
+    rejectionHtml = `
+    <div style = "margin-top: 20px; padding: 15px; background-color: #ffebee; border-left: 4px solid #e74c3c; border-radius: 6px;">
+        <h4 style="margin: 0 0 10px 0; color: #e74c3c;">Lý do từ chối</h4>
+        <p style="margin: 0;">${req.rejectReason}</p>
+      </div>
+    `;
+  }
+
+  let processedHtml = '';
+  if (req.processedDate) {
+    processedHtml = `
+    <div class="info-item-row"><label>Ngày xử lý</label><span>${req.processedDate}</span></div>
+      
+  `;//<div class="info-item-row"><label>Người xử lý</label><span>${req.processedBy || 'N/A'}</span></div>
+  }
+
+  const contentHtml = `
+    <h3 style = "color: #0a74bb; margin-top: 0;"> Thông tin đơn xin</h3>
+      <div class="info-vertical-list">
+        <div class="info-item-row"><label>Người gửi</label><span>${req.citizenName || req.citizenCCCD || 'N/A'}</span></div>
+        <div class="info-item-row"><label>Loại yêu cầu</label><span>${req.actionName}</span></div>
+        
+        <div class="info-item-row"><label>Trạng thái</label><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></div>
+        <div class="info-item-row"><label>Ngày gửi</label><span>${req.createdDate}</span></div>
+        ${processedHtml}
+      </div>
+    ${payloadHtml}
+    ${rejectionHtml}
+    ${req.status === 'PENDING'? `<button class="btn success" style = "margin-top:10px" onclick = "approveRequestHandler(${req.id})"> Đồng ý</button>
+      <button class="btn danger" style = "margin-top:10px" onclick="rejectRequestHandler(${req.id})">Từ chối</button>` : ''}
+  `;
+  //<div class="info-item-row"><label>Người liên quan</label><span>${req.targetPerson || 'N/A'}</span></div>
+
+  showDetailView('Chi tiết đơn xin', contentHtml);
+}
+
+function formatPayloadKey(key) {
+  const keyMap = {
+    'noiTamTru': 'Nơi tạm trú',
+    'noiChuyenDen': 'Nơi chuyển đến',
+    'ngayDangKy': 'Ngày đăng ký',
+    'denNgay': 'Đến ngày',
+    'lyDo': 'Lý do',
+    'newAddress': 'Địa chỉ mới',
+    'changeReason': 'Lý do thay đổi',
+    'newHeadId': 'ID chủ hộ mới',
+    'splitMembers': 'Thành viên tách hộ',
+    'newAddress': 'Địa chỉ hộ mới',
+    'text': 'Yêu cầu',
+    'id': 10,
+    'diaChi': 10,
+    'idHK': 10,
+    'newOwnerId': 10,
+    'tv': 10,
+    'none': '',
+    'diaChiFull': "Địa chỉ mới",
+    'HKcu': 'Hộ khẩu hiện tại',
+    'HK1': 'Hộ khẩu thứ nhất',
+    'HK2': 'Hộ khẩu thứ hai',
+    'HoKhauMoi': 10,
+    'idHoKhauCu':10
+  };
+  return keyMap[key] || key;
+}
+
+async function approveRequestHandler(requestId) {
+  const confirm = await Swal.fire({
+    title: 'Xác nhận phê duyệt',
+    text: 'Bạn có chắc muốn phê duyệt đơn xin này?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Đồng ý',
+    cancelButtonText: 'Hủy',
+    confirmButtonColor: '#27ae60'
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  showLoading('Đang xử lý...');
+
+  const result = await ApiService.approveRequest(requestId);
+
+  closeLoading();
+
+  if (result.success) {
+    Saved('Đã phê duyệt đơn xin', 1200);
+    await renderAdminRequests();
+    backDetailView();
+  } else {
+    fireError(result.message || 'Không thể phê duyệt đơn xin');
+  }
+}
+
+async function rejectRequestHandler(requestId) {
+  let { value: reason } = await Swal.fire({
+    title: 'Từ chối đơn xin',
+    input: 'textarea',
+    inputLabel: 'Lý do từ chối',
+    inputPlaceholder: 'Nhập lý do từ chối...',
+    inputAttributes: {
+      'aria-label': 'Nhập lý do từ chối'
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Từ chối',
+    cancelButtonText: 'Hủy',
+    confirmButtonColor: '#e74c3c',
+    // inputValidator: (value) => {
+    //   if (!value) {
+    //     return 'Vui lòng nhập lý do từ chối';
+    //   }
+    // }
+  });
+
+  //if (!reason) return;
+  if (!reason) reason = 'Không có';
+  showLoading('Đang xử lý...');
+
+  const result = await ApiService.rejectRequest(requestId, reason);
+
+  closeLoading();
+
+  if (result.success) {
+    Saved('Đã từ chối đơn xin', 1200);
+    await renderAdminRequests();
+    backDetailView();
+  } else {
+    fireError(result.message || 'Không thể từ chối đơn xin');
+  }
 }

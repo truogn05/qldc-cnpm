@@ -1,35 +1,54 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quản lý dân cư</title>
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý dân cư</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
-  
+
   <!-- Trang Đăng nhập -->
   <div id="loginPage">
     <!-- Intro Screen Background -->
     <div id="introBackground" class="intro-background"></div>
-    
+
     <!-- Intro Text (shown initially) -->
     <div id="introText" class="intro-text">
-      
       <h1 class="intro-title">Tổ dân phố 7</h1>
       <h1 class="intro-title">Phường La Khê</h1>
       <p class="intro-subtitle">Hệ thống quản lý dân cư</p>
     </div>
-    
+
     <!-- Login Modal (hidden initially) -->
     <div id="loginModal" class="login-modal">
-      <div class="login-box"> 
+      <div class="login-box">
         <h2>Đăng nhập hệ thống</h2>
-        <input type="text" id="username" placeholder="Tên đăng nhập">
+        <input type="text" id="username" placeholder="Tên đăng nhập / CCCD">
         <input type="password" id="password" placeholder="Mật khẩu">
         <button id="loginBtn">Đăng nhập</button>
         <p class="error-msg" id="errorMsg"></p>
+        <p class="register-link">
+          Chưa có tài khoản? <a href="#" id="showRegisterBtn">Đăng ký ngay</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Registration Modal (hidden initially) -->
+    <div id="registerModal" class="login-modal" style="display: none;">
+      <div class="login-box">
+        <h2>Đăng ký tài khoản</h2>
+        <p style="font-size: 0.9rem; color: #000; margin-bottom: 1rem;">Sử dụng số CCCD của bạn để đăng ký</p>
+        <input type="text" id="regCccd" placeholder="Số CCCD (12 số)">
+        <input type="password" id="regPassword" placeholder="Mật khẩu">
+        <input type="password" id="regPasswordConfirm" placeholder="Xác nhận mật khẩu">
+        <button id="registerBtn">Đăng ký</button>
+        <p class="error-msg" id="regErrorMsg"></p>
+        <p class="register-link">
+          Đã có tài khoản? <a href="#" id="showLoginBtn">Đăng nhập</a>
+        </p>
       </div>
     </div>
   </div>
@@ -41,19 +60,20 @@
       <aside class="sidebar">
         <!-- Sửa: Link brand về trang hộ khẩu -->
         <div class="brand" id="brandLogo" data-section="households" style="cursor: pointer;">Tổ dân phố 7</div>
-        
+
         <!-- Sửa: Xóa Trang chủ, đặt Hộ khẩu là active mặc định -->
         <div class="nav-item active" data-section="households">🏠 Hộ khẩu</div>
         <div class="nav-item" data-section="residents">👪 Nhân khẩu</div>
         <div class="nav-item" data-section="stats">📊 Thống kê</div>
         <div class="nav-item" data-section="rewards">🎁 Phần thưởng</div>
-        <div class="nav-item" data-section="residence" id="residenceMain">📋 Đăng ký tạm trú / tạm vắng</div>
+        <div class="nav-item" data-section="residence" id="residenceMain">📋 Tạm trú /  tạm vắng</div>
 
         <div class="nav-sub" id="residenceSub">
           <div class="nav-item" data-section="residence_temp">➕ Danh sách tạm trú</div>
           <div class="nav-item" data-section="residence_absent">➖ Danh sách tạm vắng</div>
         </div>
-        
+
+        <div class="nav-item" data-section="admin_requests">📋 Quản lý đơn xin</div>
 
         <div class="sidebar-bottom"><button class="btn-outline" id="logoutBtn">Đăng xuất</button></div>
       </aside>
@@ -97,7 +117,7 @@
               <tbody></tbody>
             </table>
           </section>
-          
+
           <section id="residents" class="section heavy-section">
             <table id="residentTable">
               <thead>
@@ -125,7 +145,7 @@
                   <th>Giới tính</th>
                   <th>Quê quán</th>
                   <th style="text-align:right">Thời hạn tạm trú</th>
-                  <th style="text-align:center">Thao tác</th>
+                  <th style="width : 200px">Thao tác</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -144,7 +164,7 @@
                   <th>Số CCCD</th>
                   <th>Nơi chuyển đến</th>
                   <!-- Sửa lỗi 7: Bỏ cột thời hạn -->
-                  <th style="text-align:center">Thao tác</th>
+                  <th style="width : 200px">Thao tác</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -172,15 +192,101 @@
 
           <section id="rewards" class="section">
             <table id="rewardTable">
-              <thead><tr><th>Đợt</th><th>Loại</th><th>Tổng giá trị</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
-                <tbody></tbody>
+              <thead>
+                <tr>
+                  <th>Đợt</th>
+                  <th>Loại</th>
+                  <th>Tổng giá trị</th>
+                  <th>Ngày tạo</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </section>
+
+          <section id="citizen_info" class="section">
+            <div id="citizenInfoContent"></div>
+          </section>
+          <section id="citizen_household" class="section">
+            <div id="householdInfoContent"></div>
+          </section>
+          <!-- 📝 Yêu cầu của tôi (Citizen) -->
+          <section id="citizen_requests" class="section">
+            <table id="citizenRequestsTable">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Loại yêu cầu</th>
+                  <th>Người yêu cầu</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày gửi</th>
+                  <th>Xử lý</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </section>
+
+          <!-- ➕ Gửi yêu cầu mới (Citizen) -->
+          <section id="citizen_submit" class="section">
+            <div class="card-stats" style="max-width: 800px; margin: 0 auto;">
+              <h3 style="margin-bottom: 20px;">Gửi yêu cầu mới</h3>
+              <form id="citizenRequestForm">
+                <div class="form-group">
+                  <label>Loại yêu cầu *</label>
+                  <select id="requestType" required>
+                    <option value="">-- Chọn loại yêu cầu --</option>
+                    <option value="saveTemp">Đăng ký tạm trú</option>
+                    <option value="saveTamVang">Đăng ký tạm vắng</option>
+                    <option value="removeThuongTru">Xóa đăng ký thường trú</option>
+                    <option value="removeTamTru">Xóa đăng ký tạm trú</option>
+                    <option value="removeTamVang">Xóa đăng ký tạm vắng</option>
+                  </select>
+                </div>
+
+
+                <div id="dynamicFormFields"></div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn primary">Gửi yêu cầu</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <!-- 📋 Quản lý đơn xin (Admin) -->
+          <section id="admin_requests" class="section heavy-section">
+            <div style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center;">
+              <label style="font-weight: bold;">Lọc theo trạng thái:</label>
+              <select id="adminRequestStatusFilter"
+                style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="">Tất cả</option>
+                <option value="PENDING">Chờ duyệt</option>
+                <option value="APPROVED">Đã duyệt</option>
+                <option value="REJECTED">Đã từ chối</option>
+              </select>
+            </div>
+            <table id="adminRequestsTable">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Người gửi</th>
+                  <th>Loại yêu cầu</th>
+                  <th>Người liên quan</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày gửi</th>
+                  <th style="width: 200px">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
             </table>
           </section>
         </div>
       </main>
     </div>
 
-   
+
 
     <!-- Sửa lỗi 4: Modal xác nhận Hủy -->
     <div id="confirmModal" class="confirm-modal">
@@ -196,22 +302,23 @@
 
     <!-- Modal thao tác -->
     <div id="actionModal" class="action-modal">
-        <div class="action-modal-content">
-            <div class="modal-header">
-                <h3 id="actionModalTitle">CHỌN THAO TÁC</h3>
-            </div>
-            <p class="modal-desc" id="act-msg"></p>
-<!-- Vui lòng chọn một hành động bên dưới để tiếp tục. -->
-            <div class="action-list" id="actionList" onclick="handleActionClick(event)">
-                
-                
-            </div>
+      <div class="action-modal-content">
+        <div class="modal-header">
+          <h3 id="actionModalTitle">CHỌN THAO TÁC</h3>
         </div>
+        <p class="modal-desc" id="act-msg"></p>
+        <!-- Vui lòng chọn một hành động bên dưới để tiếp tục. -->
+        <div class="action-list" id="actionList" onclick="handleActionClick(event)">
+
+
+        </div>
+      </div>
     </div>
 
   </div>
 
-  <script src="js/app.js"></script> 
+  <script src="js/app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
+
 </html>
